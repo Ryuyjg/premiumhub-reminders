@@ -232,25 +232,52 @@ export default function SettingsModal({
               </div>
             </div>
 
-            <div style={{ marginTop: '12px' }}>
-              <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>
-                WhatsApp Footer Signature
-              </label>
-              <input
-                type="text"
-                value={formData.whatsappSignature}
-                onChange={(e) => handleChange('whatsappSignature', e.target.value)}
-                style={{
-                  width: '100%',
-                  background: '#090d16',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  borderRadius: '10px',
-                  padding: '10px 12px',
-                  color: '#f8fafc',
-                  fontSize: '0.88rem',
-                  outline: 'none'
-                }}
-              />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginTop: '12px' }}>
+              <div>
+                <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>
+                  WhatsApp Footer Signature
+                </label>
+                <input
+                  type="text"
+                  value={formData.whatsappSignature}
+                  onChange={(e) => handleChange('whatsappSignature', e.target.value)}
+                  style={{
+                    width: '100%',
+                    background: '#090d16',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    borderRadius: '10px',
+                    padding: '10px 12px',
+                    color: '#f8fafc',
+                    fontSize: '0.88rem',
+                    outline: 'none'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.8rem', color: '#f87171', display: 'block', marginBottom: '6px', fontWeight: 600 }}>
+                  🔒 4-Digit Master PIN (App Lock)
+                </label>
+                <input
+                  type="password"
+                  maxLength={4}
+                  value={formData.masterPin || '8590'}
+                  onChange={(e) => handleChange('masterPin', e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  style={{
+                    width: '100%',
+                    background: '#090d16',
+                    border: '1px solid rgba(239, 68, 68, 0.4)',
+                    borderRadius: '10px',
+                    padding: '10px 12px',
+                    color: '#f87171',
+                    fontSize: '1rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.2em',
+                    textAlign: 'center',
+                    outline: 'none'
+                  }}
+                />
+              </div>
             </div>
           </div>
 

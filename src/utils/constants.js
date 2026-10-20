@@ -28,7 +28,8 @@ export const DEFAULT_SETTINGS = {
   telegramChatId: '',
   defaultCountryCode: '+91',
   whatsappSignature: '— Team Premium Hub',
-  autoTelegramAlerts: false
+  autoTelegramAlerts: false,
+  masterPin: '8590'
 };
 
 // Realistic seed data representing real OTT reseller orders

@@ -1,4 +1,3 @@
-import React from 'react';
 import { 
   Sparkles, 
   Plus, 
@@ -7,7 +6,8 @@ import {
   FileSpreadsheet, 
   LayoutGrid, 
   Table as TableIcon,
-  BellRing
+  BellRing,
+  Lock
 } from 'lucide-react';
 
 export default function Navbar({
@@ -19,7 +19,8 @@ export default function Navbar({
   onSendTelegramAlert,
   isSendingTelegram,
   viewMode,
-  setViewMode
+  setViewMode,
+  onLock
 }) {
   return (
     <header style={{
@@ -224,6 +225,28 @@ export default function Navbar({
           >
             <SettingsIcon size={15} />
             <span>Settings</span>
+          </button>
+
+          {/* Quick Lock Button */}
+          <button
+            onClick={onLock}
+            title="Lock Dashboard"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.25)',
+              color: '#f87171',
+              padding: '8px 12px',
+              borderRadius: '10px',
+              cursor: 'pointer',
+              fontSize: '0.85rem',
+              fontWeight: 600
+            }}
+          >
+            <Lock size={14} />
+            <span>Lock</span>
           </button>
 
           {/* Add Subscription Button */}

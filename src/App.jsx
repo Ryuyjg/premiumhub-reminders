@@ -8,6 +8,7 @@ import SubscriptionModal from './components/SubscriptionModal';
 import SettingsModal from './components/SettingsModal';
 import BulkImportExportModal from './components/BulkImportExportModal';
 import Toast from './components/Toast';
+import LockScreen from './components/LockScreen';
 
 import { PLATFORMS, DEFAULT_SETTINGS, INITIAL_SUBSCRIPTIONS } from './utils/constants';
 import { 
@@ -31,6 +32,12 @@ import {
 } from 'lucide-react';
 
 export default function App() {
+  // Master PIN Lock State
+  const [isLocked, setIsLocked] = useState(() => {
+    return localStorage.getItem('premium_hub_unlocked_v1') !== 'true' &&
+           sessionStorage.getItem('premium_hub_unlocked_v1') !== 'true';
+  });
+
   // Load data from LocalStorage
   const [subscriptions, setSubscriptions] = useState(() => {
     try {
@@ -51,6 +58,13 @@ export default function App() {
     }
     return DEFAULT_SETTINGS;
   });
+
+  // Lock handler
+  const handleLock = () => {
+    localStorage.removeItem('premium_hub_unlocked_v1');
+    sessionStorage.removeItem('premium_hub_unlocked_v1');
+    setIsLocked(true);
+  };
 
   // UI state
   const [viewMode, setViewMode] = useState('grid');
@@ -223,6 +237,14 @@ export default function App() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* Master Security Lock Screen */}
+      {isLocked && (
+        <LockScreen
+          masterPin={settings.masterPin || '8590'}
+          onUnlock={() => setIsLocked(false)}
+        />
+      )}
+
       {/* Top Navigation */}
       <Navbar
         urgentCount={urgentCount}
@@ -234,6 +256,7 @@ export default function App() {
         isSendingTelegram={isSendingTelegram}
         viewMode={viewMode}
         setViewMode={setViewMode}
+        onLock={handleLock}
       />
 
       {/* Main Content Container */}
