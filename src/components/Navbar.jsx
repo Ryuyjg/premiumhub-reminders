@@ -82,6 +82,27 @@ export default function Navbar({
               }}>
                 PRO RESELLER
               </span>
+              <span style={{
+                fontSize: '0.65rem',
+                fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                background: 'rgba(16, 185, 129, 0.15)',
+                color: '#34d399',
+                border: '1px solid rgba(16, 185, 129, 0.35)',
+                padding: '2px 7px',
+                borderRadius: '6px'
+              }}>
+                <span style={{
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  background: '#10b981',
+                  boxShadow: '0 0 6px #10b981'
+                }}></span>
+                CLOUD LIVE
+              </span>
             </div>
             <p style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500 }}>
               OTT Subscriptions, WhatsApp Reminders & Renewal Engine

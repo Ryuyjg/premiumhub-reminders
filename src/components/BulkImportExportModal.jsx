@@ -195,27 +195,33 @@ export default function BulkImportExportModal({
   };
 
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      zIndex: 1000,
-      background: 'rgba(0, 0, 0, 0.8)',
-      backdropFilter: 'blur(8px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px'
-    }}>
-      <div style={{
-        background: '#0f172a',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        borderRadius: '20px',
-        width: '100%',
-        maxWidth: '580px',
-        boxShadow: '0 25px 60px rgba(0, 0, 0, 0.8)',
-        overflow: 'hidden',
-        animation: 'fadeIn 0.2s ease-out'
-      }}>
+    <div
+      className="modal-overlay"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 1000,
+        background: 'rgba(0, 0, 0, 0.8)',
+        backdropFilter: 'blur(8px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px'
+      }}
+    >
+      <div
+        className="modal-dialog"
+        style={{
+          background: '#0f172a',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: '20px',
+          width: '100%',
+          maxWidth: '580px',
+          boxShadow: '0 25px 60px rgba(0, 0, 0, 0.8)',
+          overflow: 'hidden',
+          animation: 'fadeIn 0.2s ease-out'
+        }}
+      >
         {/* Header */}
         <div style={{
           background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(15, 23, 42, 0.9) 100%)',

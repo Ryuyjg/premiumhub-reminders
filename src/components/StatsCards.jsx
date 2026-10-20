@@ -94,19 +94,22 @@ export default function StatsCards({ subscriptions, currency = '₹', onFilterSe
   ];
 
   return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-      gap: '16px',
-      marginBottom: '28px'
-    }}>
+    <div
+      className="stats-grid-container"
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gap: '16px',
+        marginBottom: '28px'
+      }}
+    >
       {cards.map(c => {
         const isSelected = activeFilter === c.id;
         return (
           <div
             key={c.id}
             onClick={() => onFilterSelect && c.id !== 'financials' && onFilterSelect(isSelected ? 'all' : c.id)}
-            className={c.isPulse ? 'pulse-urgent' : ''}
+            className={`stats-card-item ${c.isPulse ? 'pulse-urgent' : ''}`}
             style={{
               background: c.bg,
               border: `1px solid ${isSelected ? c.color : c.border}`,
@@ -137,13 +140,16 @@ export default function StatsCards({ subscriptions, currency = '₹', onFilterSe
               </div>
             </div>
 
-            <div style={{
-              fontFamily: 'var(--font-heading)',
-              fontSize: '1.85rem',
-              fontWeight: 800,
-              color: c.color,
-              lineHeight: 1.2
-            }}>
+            <div
+              className="stats-card-value"
+              style={{
+                fontFamily: 'var(--font-heading)',
+                fontSize: '1.85rem',
+                fontWeight: 800,
+                color: c.color,
+                lineHeight: 1.2
+              }}
+            >
               {c.value}
             </div>
 

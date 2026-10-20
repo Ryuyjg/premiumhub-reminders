@@ -10,26 +10,21 @@ import BulkImportExportModal from './components/BulkImportExportModal';
 import Toast from './components/Toast';
 import LockScreen from './components/LockScreen';
 
-import { PLATFORMS, DEFAULT_SETTINGS, INITIAL_SUBSCRIPTIONS } from './utils/constants';
+import { PLATFORMS, DEFAULT_SETTINGS } from './utils/constants';
 import { 
   getDaysDifference, 
   calculateExpiryDate, 
   buildTelegramDailyDigest, 
   sendTelegramMessage 
 } from './utils/helpers';
-import { getSupabaseClient, mapFromDb, mapToDb } from './utils/supabase';
+import { supabase, mapFromDb, mapToDb } from './utils/supabase';
 
 import { 
   Search, 
-  Filter, 
   ArrowUpDown, 
-  Sparkles, 
   Plus, 
-  AlertCircle, 
-  CheckCircle2, 
-  Clock, 
-  Tv, 
-  MessageCircle 
+  Loader2, 
+  RefreshCw 
 } from 'lucide-react';
 
 export default function App() {
@@ -39,17 +34,11 @@ export default function App() {
            sessionStorage.getItem('premium_hub_unlocked_v1') !== 'true';
   });
 
-  // Load data from LocalStorage
-  const [subscriptions, setSubscriptions] = useState(() => {
-    try {
-      const saved = localStorage.getItem('premium_hub_subscriptions_v1');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error('Error loading subs from local storage', e);
-    }
-    return INITIAL_SUBSCRIPTIONS;
-  });
+  // Database Subscriptions state (Supabase is single source of truth)
+  const [subscriptions, setSubscriptions] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
+  // Settings state
   const [settings, setSettings] = useState(() => {
     try {
       const saved = localStorage.getItem('premium_hub_settings_v1');
@@ -59,13 +48,6 @@ export default function App() {
     }
     return DEFAULT_SETTINGS;
   });
-
-  // Lock handler
-  const handleLock = () => {
-    localStorage.removeItem('premium_hub_unlocked_v1');
-    sessionStorage.removeItem('premium_hub_unlocked_v1');
-    setIsLocked(true);
-  };
 
   // UI state
   const [viewMode, setViewMode] = useState('grid');
@@ -85,15 +67,18 @@ export default function App() {
   // Toast
   const [toast, setToast] = useState(null);
 
-  // Sync to LocalStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem('premium_hub_subscriptions_v1', JSON.stringify(subscriptions));
-    } catch (e) {
-      console.error('Failed to save subscriptions', e);
-    }
-  }, [subscriptions]);
+  const showToast = (toastObj) => {
+    setToast(toastObj);
+  };
 
+  // Lock handler
+  const handleLock = () => {
+    localStorage.removeItem('premium_hub_unlocked_v1');
+    sessionStorage.removeItem('premium_hub_unlocked_v1');
+    setIsLocked(true);
+  };
+
+  // Sync settings changes to localStorage
   useEffect(() => {
     try {
       localStorage.setItem('premium_hub_settings_v1', JSON.stringify(settings));
@@ -102,9 +87,60 @@ export default function App() {
     }
   }, [settings]);
 
-  const showToast = (toastObj) => {
-    setToast(toastObj);
+  // Direct Fetch from Supabase
+  const fetchCloudSubscriptions = async (silent = false) => {
+    if (!silent) setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .order('expiry_date', { ascending: true });
+
+      if (error) {
+        console.error('Supabase fetch error:', error);
+        showToast({ type: 'error', message: `Database error: ${error.message}` });
+      } else if (data) {
+        setSubscriptions(data.map(mapFromDb));
+      }
+    } catch (err) {
+      console.error('Network / Supabase error:', err);
+    } finally {
+      if (!silent) setIsLoading(false);
+    }
   };
+
+  // Load from Supabase on mount + Realtime Sync across Phone & PC
+  useEffect(() => {
+    fetchCloudSubscriptions();
+
+    // Subscribe to live database changes from any device (phone, laptop, desktop)
+    const channel = supabase
+      .channel('schema_subscriptions_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'subscriptions' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newSub = mapFromDb(payload.new);
+            setSubscriptions(prev => {
+              if (prev.some(s => s.id === newSub.id)) return prev;
+              return [newSub, ...prev];
+            });
+            showToast({ type: 'info', message: `⚡ Added from another device: ${newSub.clientName}` });
+          } else if (payload.eventType === 'UPDATE') {
+            const updated = mapFromDb(payload.new);
+            setSubscriptions(prev => prev.map(s => s.id === updated.id ? updated : s));
+          } else if (payload.eventType === 'DELETE') {
+            setSubscriptions(prev => prev.filter(s => s.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // Urgent counts (expiring today or tomorrow)
   const urgentCount = useMemo(() => {
@@ -117,7 +153,6 @@ export default function App() {
   // Filter & sort logic
   const filteredSubscriptions = useMemo(() => {
     return subscriptions.filter(sub => {
-      // Search filter
       const q = searchQuery.toLowerCase().trim();
       const matchSearch = !q || 
         sub.clientName.toLowerCase().includes(q) ||
@@ -128,25 +163,15 @@ export default function App() {
 
       if (!matchSearch) return false;
 
-      // Platform filter
       if (selectedPlatform !== 'all' && sub.platform !== selectedPlatform) {
         return false;
       }
 
-      // Status filter
       const days = getDaysDifference(sub.expiryDate);
-      if (selectedStatusFilter === 'urgent') {
-        return days === 0 || days === 1;
-      }
-      if (selectedStatusFilter === 'active') {
-        return days >= 0;
-      }
-      if (selectedStatusFilter === 'expiring_week') {
-        return days >= 0 && days <= 7;
-      }
-      if (selectedStatusFilter === 'expired') {
-        return days < 0;
-      }
+      if (selectedStatusFilter === 'urgent') return days === 0 || days === 1;
+      if (selectedStatusFilter === 'active') return days >= 0;
+      if (selectedStatusFilter === 'expiring_week') return days >= 0 && days <= 7;
+      if (selectedStatusFilter === 'expired') return days < 0;
 
       return true;
     }).sort((a, b) => {
@@ -168,82 +193,28 @@ export default function App() {
     });
   }, [subscriptions, searchQuery, selectedPlatform, selectedStatusFilter, sortBy]);
 
-  // Supabase Cloud Realtime Sync Effect
-  useEffect(() => {
-    const supabase = getSupabaseClient(settings.supabaseUrl, settings.supabaseAnonKey);
-    if (!supabase) return;
-
-    // Fetch initial data from cloud
-    const fetchCloud = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('subscriptions')
-          .select('*')
-          .order('expiry_date', { ascending: true });
-
-        if (!error && data && data.length > 0) {
-          const mapped = data.map(mapFromDb);
-          setSubscriptions(mapped);
-          showToast({ type: 'success', message: `☁️ Cloud connected! Loaded ${mapped.length} subscriptions.` });
-        }
-      } catch (err) {
-        console.warn('Supabase fetch failed, using local storage:', err);
-      }
-    };
-
-    fetchCloud();
-
-    // Subscribe to live changes across devices
-    const channel = supabase
-      .channel('subscriptions_db_changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'subscriptions' },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            const newSub = mapFromDb(payload.new);
-            setSubscriptions(prev => {
-              if (prev.some(s => s.id === newSub.id)) return prev;
-              return [newSub, ...prev];
-            });
-          } else if (payload.eventType === 'UPDATE') {
-            const updated = mapFromDb(payload.new);
-            setSubscriptions(prev => prev.map(s => s.id === updated.id ? updated : s));
-          } else if (payload.eventType === 'DELETE') {
-            setSubscriptions(prev => prev.filter(s => s.id !== payload.old.id));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [settings.supabaseAnonKey, settings.supabaseUrl]);
-
-  // Save new or updated subscription
+  // Save new or updated subscription directly to Supabase
   const handleSaveSubscription = async (subData) => {
+    // Optimistic UI update
     if (editingSub) {
       setSubscriptions(prev => prev.map(s => s.id === subData.id ? subData : s));
-      showToast({ type: 'success', message: `Updated ${subData.clientName}'s subscription!` });
+      showToast({ type: 'success', message: `Saved ${subData.clientName}!` });
       setEditingSub(null);
     } else {
       setSubscriptions(prev => [subData, ...prev]);
-      showToast({ type: 'success', message: `Added ${subData.clientName} to Premium Hub!` });
+      showToast({ type: 'success', message: `Added ${subData.clientName} to Supabase!` });
     }
 
-    // Cloud sync
-    const supabase = getSupabaseClient(settings.supabaseUrl, settings.supabaseAnonKey);
-    if (supabase) {
-      try {
-        await supabase.from('subscriptions').upsert(mapToDb(subData));
-      } catch (err) {
-        console.warn('Could not sync to cloud:', err);
-      }
+    // Persist to Supabase
+    const { error } = await supabase.from('subscriptions').upsert(mapToDb(subData));
+    if (error) {
+      console.error('Supabase save error:', error);
+      showToast({ type: 'error', message: `Save error: ${error.message}` });
+      fetchCloudSubscriptions(true);
     }
   };
 
-  // Delete subscription
+  // Delete subscription from Supabase
   const handleDeleteSubscription = async (id) => {
     const target = subscriptions.find(s => s.id === id);
     const name = target ? target.clientName : 'subscription';
@@ -251,14 +222,11 @@ export default function App() {
       setSubscriptions(prev => prev.filter(s => s.id !== id));
       showToast({ type: 'info', message: `Removed ${name}` });
 
-      // Cloud delete
-      const supabase = getSupabaseClient(settings.supabaseUrl, settings.supabaseAnonKey);
-      if (supabase) {
-        try {
-          await supabase.from('subscriptions').delete().eq('id', id);
-        } catch (err) {
-          console.warn('Could not delete from cloud:', err);
-        }
+      const { error } = await supabase.from('subscriptions').delete().eq('id', id);
+      if (error) {
+        console.error('Supabase delete error:', error);
+        showToast({ type: 'error', message: `Delete error: ${error.message}` });
+        fetchCloudSubscriptions(true);
       }
     }
   };
@@ -279,21 +247,17 @@ export default function App() {
     setSubscriptions(prev => prev.map(s => s.id === sub.id ? updated : s));
     showToast({ 
       type: 'success', 
-      message: `🎉 Renewed ${sub.clientName} for 30 more days (until ${newExpiryDate})!` 
+      message: `🎉 Renewed ${sub.clientName} (+30d until ${newExpiryDate})!` 
     });
 
-    // Cloud renew
-    const supabase = getSupabaseClient(settings.supabaseUrl, settings.supabaseAnonKey);
-    if (supabase) {
-      try {
-        await supabase.from('subscriptions').upsert(mapToDb(updated));
-      } catch (err) {
-        console.warn('Could not sync renew to cloud:', err);
-      }
+    const { error } = await supabase.from('subscriptions').upsert(mapToDb(updated));
+    if (error) {
+      console.error('Supabase renew error:', error);
+      showToast({ type: 'error', message: `Renew error: ${error.message}` });
+      fetchCloudSubscriptions(true);
     }
 
-    // Prompt to send confirmation on WhatsApp
-    if (confirm(`Renewed! Would you like to send WhatsApp renewal confirmation to ${sub.clientName}?`)) {
+    if (confirm(`Renewed! Would you like to send WhatsApp confirmation to ${sub.clientName}?`)) {
       setWhatsAppSub(updated);
     }
   };
@@ -301,7 +265,7 @@ export default function App() {
   // Send Daily Telegram Alert
   const handleSendTelegramAlert = async () => {
     if (!settings.telegramBotToken || !settings.telegramChatId) {
-      showToast({ type: 'warning', message: 'Please configure your Telegram Bot Token & Chat ID in Settings first!' });
+      showToast({ type: 'warning', message: 'Configure Telegram Bot Token & Chat ID in Settings first!' });
       setIsSettingsOpen(true);
       return;
     }
@@ -318,8 +282,32 @@ export default function App() {
     }
   };
 
+  // Bulk Import
+  const handleImportSubscriptions = async (imported) => {
+    const dbRecords = imported.map(mapToDb);
+    const { error } = await supabase.from('subscriptions').upsert(dbRecords);
+    if (!error) {
+      setSubscriptions(prev => [...imported, ...prev]);
+      showToast({ type: 'success', message: `Uploaded ${imported.length} subscriptions to Supabase Cloud!` });
+    } else {
+      showToast({ type: 'error', message: `Import error: ${error.message}` });
+    }
+  };
+
+  // Restore All
+  const handleRestoreAll = async (restored) => {
+    const dbRecords = restored.map(mapToDb);
+    const { error } = await supabase.from('subscriptions').upsert(dbRecords);
+    if (!error) {
+      setSubscriptions(restored);
+      showToast({ type: 'success', message: `Restored ${restored.length} subscriptions to Supabase!` });
+    } else {
+      showToast({ type: 'error', message: `Restore error: ${error.message}` });
+    }
+  };
+
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative' }}>
       {/* Master Security Lock Screen */}
       {isLocked && (
         <LockScreen
@@ -359,30 +347,32 @@ export default function App() {
         />
 
         {/* Search, Filter & Controls Toolbar */}
-        <div style={{
-          background: 'var(--bg-card)',
-          backdropFilter: 'blur(16px)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: 'var(--radius-lg)',
-          padding: '16px 20px',
-          marginBottom: '24px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '14px'
-        }}>
+        <div
+          className="toolbar-container"
+          style={{
+            background: 'var(--bg-card)',
+            backdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: 'var(--radius-lg)',
+            padding: '16px 20px',
+            marginBottom: '24px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '14px'
+          }}
+        >
           {/* Top row: Search & Sorting */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: '14px',
+            gap: '12px',
             flexWrap: 'wrap'
           }}>
             {/* Search Input */}
             <div style={{
               position: 'relative',
-              flex: '1 1 300px',
-              maxWidth: '480px'
+              flex: '1 1 240px'
             }}>
               <Search
                 size={18}
@@ -391,7 +381,7 @@ export default function App() {
               />
               <input
                 type="text"
-                placeholder="Search by client name, WhatsApp, email, profile..."
+                placeholder="Search clients, phone, email, profile..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{
@@ -401,7 +391,6 @@ export default function App() {
                   borderRadius: '10px',
                   padding: '10px 14px 10px 42px',
                   color: '#f8fafc',
-                  fontSize: '0.88rem',
                   outline: 'none'
                 }}
               />
@@ -425,40 +414,57 @@ export default function App() {
               )}
             </div>
 
-            {/* Quick Sort & Platform Dropdown */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            {/* Quick Refresh & Sort & Platform Dropdown */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => fetchCloudSubscriptions()}
+                title="Sync from Supabase"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '8px',
+                  color: '#cbd5e1',
+                  padding: '8px 10px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '0.8rem'
+                }}
+              >
+                <RefreshCw size={14} />
+                <span>Sync</span>
+              </button>
+
               {/* Platform Selector */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Platform:</span>
-                <select
-                  value={selectedPlatform}
-                  onChange={(e) => setSelectedPlatform(e.target.value)}
-                  style={{
-                    background: '#090d16',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    borderRadius: '8px',
-                    color: '#f8fafc',
-                    padding: '8px 12px',
-                    fontSize: '0.82rem',
-                    cursor: 'pointer',
-                    outline: 'none'
-                  }}
-                >
-                  <option value="all">All Platforms ({subscriptions.length})</option>
-                  {PLATFORMS.map(p => {
-                    const count = subscriptions.filter(s => s.platform === p.id).length;
-                    return (
-                      <option key={p.id} value={p.id}>
-                        {p.name} {count > 0 ? `(${count})` : ''}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
+              <select
+                value={selectedPlatform}
+                onChange={(e) => setSelectedPlatform(e.target.value)}
+                style={{
+                  background: '#090d16',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  borderRadius: '8px',
+                  color: '#f8fafc',
+                  padding: '8px 12px',
+                  fontSize: '0.82rem',
+                  cursor: 'pointer',
+                  outline: 'none'
+                }}
+              >
+                <option value="all">All Platforms ({subscriptions.length})</option>
+                {PLATFORMS.map(p => {
+                  const count = subscriptions.filter(s => s.platform === p.id).length;
+                  return (
+                    <option key={p.id} value={p.id}>
+                      {p.name} {count > 0 ? `(${count})` : ''}
+                    </option>
+                  );
+                })}
+              </select>
 
               {/* Sort By Dropdown */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <ArrowUpDown size={15} color="#64748b" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <ArrowUpDown size={14} color="#64748b" />
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
@@ -473,26 +479,29 @@ export default function App() {
                     outline: 'none'
                   }}
                 >
-                  <option value="expiry_asc">Expiry Date (Soonest first)</option>
-                  <option value="expiry_desc">Expiry Date (Furthest first)</option>
+                  <option value="expiry_asc">Expiry (Soonest first)</option>
+                  <option value="expiry_desc">Expiry (Furthest first)</option>
                   <option value="name">Client Name (A - Z)</option>
-                  <option value="profit_desc">Highest Profit Margin</option>
+                  <option value="profit_desc">Highest Profit</option>
                 </select>
               </div>
             </div>
           </div>
 
           {/* Quick Filter Tabs */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            overflowX: 'auto',
-            paddingBottom: '2px'
-          }}>
-            <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>Status:</span>
+          <div
+            className="filter-pills-row"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              overflowX: 'auto',
+              paddingBottom: '4px'
+            }}
+          >
+            <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600, flexShrink: 0 }}>Filter:</span>
             {[
-              { id: 'all', label: 'All Records' },
+              { id: 'all', label: 'All' },
               { id: 'urgent', label: `⚠️ Urgent (${urgentCount})`, highlight: urgentCount > 0 },
               { id: 'expiring_week', label: '📅 Next 7 Days' },
               { id: 'active', label: '🟢 Active' },
@@ -508,11 +517,12 @@ export default function App() {
                     border: `1px solid ${isActive ? '#818cf8' : 'rgba(255, 255, 255, 0.08)'}`,
                     color: isActive ? '#ffffff' : tab.highlight ? '#f87171' : '#cbd5e1',
                     borderRadius: '9999px',
-                    padding: '5px 14px',
+                    padding: '6px 14px',
                     fontSize: '0.78rem',
                     fontWeight: isActive || tab.highlight ? 700 : 500,
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
+                    flexShrink: 0,
                     transition: 'all 0.15s'
                   }}
                 >
@@ -521,14 +531,32 @@ export default function App() {
               );
             })}
 
-            <div style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#64748b' }}>
+            <div style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap' }}>
               Showing <strong>{filteredSubscriptions.length}</strong> of {subscriptions.length}
             </div>
           </div>
         </div>
 
-        {/* Content View: Grid or Table */}
-        {filteredSubscriptions.length === 0 ? (
+        {/* Content View: Loading, Empty, Grid or Table */}
+        {isLoading ? (
+          <div style={{
+            background: 'var(--bg-card)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: 'var(--radius-lg)',
+            padding: '60px 24px',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '12px'
+          }}>
+            <Loader2 size={32} color="#6366f1" style={{ animation: 'spin 1s linear infinite' }} />
+            <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
+              Syncing with Supabase Cloud Database...
+            </p>
+          </div>
+        ) : filteredSubscriptions.length === 0 ? (
           <div style={{
             background: 'var(--bg-card)',
             border: '1px dashed rgba(255, 255, 255, 0.1)',
@@ -541,49 +569,37 @@ export default function App() {
             justifyContent: 'center',
             gap: '14px'
           }}>
-            <div style={{
-              width: '56px',
-              height: '56px',
-              borderRadius: '16px',
-              background: 'rgba(99, 102, 241, 0.15)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#818cf8'
-            }}>
-              <Search size={28} />
-            </div>
             <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#f8fafc' }}>
               No subscriptions found
             </h3>
             <p style={{ fontSize: '0.85rem', color: '#94a3b8', maxWidth: '380px' }}>
-              No records match your current search or filter criteria. Try resetting your search or add a new client.
+              No records match your filters. Click below to add a new subscription.
             </p>
             <button
-              onClick={() => {
-                setSearchQuery('');
-                setSelectedPlatform('all');
-                setSelectedStatusFilter('all');
-              }}
+              onClick={() => { setEditingSub(null); setIsAddModalOpen(true); }}
               style={{
-                background: 'rgba(255, 255, 255, 0.08)',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                color: '#f8fafc',
-                padding: '8px 16px',
-                borderRadius: '8px',
+                background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                border: 'none',
+                color: '#ffffff',
+                padding: '10px 20px',
+                borderRadius: '10px',
                 cursor: 'pointer',
-                fontSize: '0.85rem',
-                fontWeight: 600
+                fontSize: '0.88rem',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
               }}
             >
-              Reset Filters
+              <Plus size={16} />
+              <span>Add First Client</span>
             </button>
           </div>
         ) : viewMode === 'grid' ? (
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-            gap: '20px'
+            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+            gap: '16px'
           }}>
             {filteredSubscriptions.map(sub => (
               <SubscriptionCard
@@ -611,6 +627,32 @@ export default function App() {
         )}
       </main>
 
+      {/* Mobile Floating Action Button (FAB) for fast 1-thumb client adding */}
+      <button
+        onClick={() => { setEditingSub(null); setIsAddModalOpen(true); }}
+        title="Add New Client"
+        style={{
+          position: 'fixed',
+          bottom: '22px',
+          right: '22px',
+          zIndex: 90,
+          width: '56px',
+          height: '56px',
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+          color: '#ffffff',
+          border: 'none',
+          boxShadow: '0 8px 24px rgba(99, 102, 241, 0.6)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'transform 0.15s ease'
+        }}
+      >
+        <Plus size={26} />
+      </button>
+
       {/* Footer */}
       <footer style={{
         textAlign: 'center',
@@ -620,7 +662,7 @@ export default function App() {
         borderTop: '1px solid rgba(255, 255, 255, 0.05)',
         marginTop: 'auto'
       }}>
-        <strong>{settings.businessName || 'Premium Hub'}</strong> — Built for OTT Subscription Resellers • 1-Click WhatsApp Reminders & Telegram Bot Alerts
+        <strong>{settings.businessName || 'Premium Hub'}</strong> • Supabase Cloud Realtime Sync • 1-Click WhatsApp Reminders
       </footer>
 
       {/* Modals */}
@@ -653,10 +695,8 @@ export default function App() {
         isOpen={isImportExportOpen}
         subscriptions={subscriptions}
         onClose={() => setIsImportExportOpen(false)}
-        onImportSubscriptions={(imported) => {
-          setSubscriptions(prev => [...imported, ...prev]);
-        }}
-        onRestoreAll={(restored) => setSubscriptions(restored)}
+        onImportSubscriptions={handleImportSubscriptions}
+        onRestoreAll={handleRestoreAll}
         onShowToast={showToast}
       />
 

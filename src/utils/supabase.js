@@ -1,29 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 
-export const DEFAULT_SUPABASE_URL = 'https://ioibfvtdacuakpckrllf.supabase.co';
+export const SUPABASE_URL = 'https://ioibfvtdacuakpckrllf.supabase.co';
+export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlvaWJmdnRkYWN1YWtwY2tybGxmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI1MTgxOTQsImV4cCI6MjEwODA5NDE5NH0.6Qxxhc-SzTD5GcCCsKYYrcpmXEmt8-11-66uI00DZDk';
 
-let supabaseInstance = null;
+// Always initialized singleton client directly connected to your project
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { persistSession: false },
+  realtime: { params: { eventsPerSecond: 10 } }
+});
 
-export function getSupabaseClient(customUrl, customKey) {
-  const url = customUrl || import.meta.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
-  const key = customKey || import.meta.env.VITE_SUPABASE_ANON_KEY || localStorage.getItem('premium_hub_supabase_key');
-
-  if (!url || !key) {
-    return null;
-  }
-
-  try {
-    if (!supabaseInstance || supabaseInstance.supabaseUrl !== url) {
-      supabaseInstance = createClient(url, key);
-    }
-    return supabaseInstance;
-  } catch (err) {
-    console.error('Failed to initialize Supabase client:', err);
-    return null;
-  }
-}
-
-// Map database column names (snake_case) to client models (camelCase)
+// Map database column names (snake_case) to application models (camelCase)
 export function mapFromDb(row) {
   return {
     id: row.id,

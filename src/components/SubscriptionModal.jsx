@@ -129,30 +129,36 @@ export default function SubscriptionModal({
   const profit = (parseFloat(formData.sellPrice) || 0) - (parseFloat(formData.costPrice) || 0);
 
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      zIndex: 1000,
-      background: 'rgba(0, 0, 0, 0.8)',
-      backdropFilter: 'blur(8px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px'
-    }}>
-      <div style={{
-        background: '#0f172a',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        borderRadius: '20px',
-        width: '100%',
-        maxWidth: '720px',
-        maxHeight: '90vh',
-        boxShadow: '0 25px 60px rgba(0, 0, 0, 0.8)',
+    <div
+      className="modal-overlay"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 1000,
+        background: 'rgba(0, 0, 0, 0.8)',
+        backdropFilter: 'blur(8px)',
         display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-        animation: 'fadeIn 0.2s ease-out'
-      }}>
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px'
+      }}
+    >
+      <div
+        className="modal-dialog"
+        style={{
+          background: '#0f172a',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: '20px',
+          width: '100%',
+          maxWidth: '720px',
+          maxHeight: '90vh',
+          boxShadow: '0 25px 60px rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          animation: 'fadeIn 0.2s ease-out'
+        }}
+      >
         {/* Modal Header */}
         <div style={{
           background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(15, 23, 42, 0.9) 100%)',

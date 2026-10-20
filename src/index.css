@@ -184,3 +184,70 @@ button, input, select, textarea {
   border-radius: var(--radius-sm);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
+
+/* Mobile & Touch Optimizations */
+@media (max-width: 768px) {
+  /* Prevent iOS zoom on input focus */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+
+  /* Compact padding for body and main */
+  main {
+    padding: 14px 12px !important;
+  }
+
+  /* Header compact */
+  header {
+    padding: 10px 14px !important;
+  }
+
+  /* Stats cards in 2-column compact grid */
+  .stats-grid-container {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .stats-card-item {
+    padding: 12px 14px !important;
+  }
+
+  .stats-card-value {
+    font-size: 1.45rem !important;
+  }
+
+  /* Toolbar adjustments */
+  .toolbar-container {
+    padding: 12px 14px !important;
+    gap: 10px !important;
+    margin-bottom: 16px !important;
+  }
+
+  /* Modals take full height / bottom sheet style */
+  .modal-dialog {
+    max-width: 100% !important;
+    max-height: 94vh !important;
+    border-radius: 20px 20px 0 0 !important;
+    margin-top: auto !important;
+  }
+
+  .modal-overlay {
+    padding: 0 !important;
+    align-items: flex-end !important;
+  }
+
+  /* Touch action buttons with minimum 44px height */
+  .touch-btn {
+    min-height: 44px !important;
+  }
+
+  /* Horizontal filter pills hide scrollbar */
+  .filter-pills-row::-webkit-scrollbar {
+    display: none;
+  }
+  .filter-pills-row {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
