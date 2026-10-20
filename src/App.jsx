@@ -17,6 +17,7 @@ import {
   buildTelegramDailyDigest, 
   sendTelegramMessage 
 } from './utils/helpers';
+import { getSupabaseClient, mapFromDb, mapToDb } from './utils/supabase';
 
 import { 
   Search, 
@@ -167,8 +168,61 @@ export default function App() {
     });
   }, [subscriptions, searchQuery, selectedPlatform, selectedStatusFilter, sortBy]);
 
+  // Supabase Cloud Realtime Sync Effect
+  useEffect(() => {
+    const supabase = getSupabaseClient(settings.supabaseUrl, settings.supabaseAnonKey);
+    if (!supabase) return;
+
+    // Fetch initial data from cloud
+    const fetchCloud = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .order('expiry_date', { ascending: true });
+
+        if (!error && data && data.length > 0) {
+          const mapped = data.map(mapFromDb);
+          setSubscriptions(mapped);
+          showToast({ type: 'success', message: `☁️ Cloud connected! Loaded ${mapped.length} subscriptions.` });
+        }
+      } catch (err) {
+        console.warn('Supabase fetch failed, using local storage:', err);
+      }
+    };
+
+    fetchCloud();
+
+    // Subscribe to live changes across devices
+    const channel = supabase
+      .channel('subscriptions_db_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'subscriptions' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newSub = mapFromDb(payload.new);
+            setSubscriptions(prev => {
+              if (prev.some(s => s.id === newSub.id)) return prev;
+              return [newSub, ...prev];
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            const updated = mapFromDb(payload.new);
+            setSubscriptions(prev => prev.map(s => s.id === updated.id ? updated : s));
+          } else if (payload.eventType === 'DELETE') {
+            setSubscriptions(prev => prev.filter(s => s.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [settings.supabaseAnonKey, settings.supabaseUrl]);
+
   // Save new or updated subscription
-  const handleSaveSubscription = (subData) => {
+  const handleSaveSubscription = async (subData) => {
     if (editingSub) {
       setSubscriptions(prev => prev.map(s => s.id === subData.id ? subData : s));
       showToast({ type: 'success', message: `Updated ${subData.clientName}'s subscription!` });
@@ -177,21 +231,40 @@ export default function App() {
       setSubscriptions(prev => [subData, ...prev]);
       showToast({ type: 'success', message: `Added ${subData.clientName} to Premium Hub!` });
     }
+
+    // Cloud sync
+    const supabase = getSupabaseClient(settings.supabaseUrl, settings.supabaseAnonKey);
+    if (supabase) {
+      try {
+        await supabase.from('subscriptions').upsert(mapToDb(subData));
+      } catch (err) {
+        console.warn('Could not sync to cloud:', err);
+      }
+    }
   };
 
   // Delete subscription
-  const handleDeleteSubscription = (id) => {
+  const handleDeleteSubscription = async (id) => {
     const target = subscriptions.find(s => s.id === id);
     const name = target ? target.clientName : 'subscription';
     if (confirm(`Are you sure you want to delete ${name}?`)) {
       setSubscriptions(prev => prev.filter(s => s.id !== id));
       showToast({ type: 'info', message: `Removed ${name}` });
+
+      // Cloud delete
+      const supabase = getSupabaseClient(settings.supabaseUrl, settings.supabaseAnonKey);
+      if (supabase) {
+        try {
+          await supabase.from('subscriptions').delete().eq('id', id);
+        } catch (err) {
+          console.warn('Could not delete from cloud:', err);
+        }
+      }
     }
   };
 
   // 1-Click Renew +30 Days
-  const handleRenew30Days = (sub) => {
-    // If expired, renew 30 days from today; if still active, add 30 days to existing expiry date
+  const handleRenew30Days = async (sub) => {
     const daysLeft = getDaysDifference(sub.expiryDate);
     const baseDate = daysLeft < 0 ? new Date().toISOString().split('T')[0] : sub.expiryDate;
     const newExpiryDate = calculateExpiryDate(baseDate, 30);
@@ -208,6 +281,16 @@ export default function App() {
       type: 'success', 
       message: `🎉 Renewed ${sub.clientName} for 30 more days (until ${newExpiryDate})!` 
     });
+
+    // Cloud renew
+    const supabase = getSupabaseClient(settings.supabaseUrl, settings.supabaseAnonKey);
+    if (supabase) {
+      try {
+        await supabase.from('subscriptions').upsert(mapToDb(updated));
+      } catch (err) {
+        console.warn('Could not sync renew to cloud:', err);
+      }
+    }
 
     // Prompt to send confirmation on WhatsApp
     if (confirm(`Renewed! Would you like to send WhatsApp renewal confirmation to ${sub.clientName}?`)) {

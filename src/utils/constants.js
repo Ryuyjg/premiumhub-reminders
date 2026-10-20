@@ -29,7 +29,9 @@ export const DEFAULT_SETTINGS = {
   defaultCountryCode: '+91',
   whatsappSignature: '— Team Premium Hub',
   autoTelegramAlerts: false,
-  masterPin: '8590'
+  masterPin: '8590',
+  supabaseUrl: 'https://ioibfvtdacuakpckrllf.supabase.co',
+  supabaseAnonKey: ''
 };
 
 // Realistic seed data representing real OTT reseller orders

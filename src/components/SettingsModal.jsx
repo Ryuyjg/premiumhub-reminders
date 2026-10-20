@@ -405,6 +405,91 @@ export default function SettingsModal({
             </button>
           </div>
 
+          {/* Supabase Cloud Database Sync */}
+          <div style={{
+            background: 'rgba(16, 185, 129, 0.08)',
+            border: '1px solid rgba(16, 185, 129, 0.25)',
+            borderRadius: '14px',
+            padding: '16px 18px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '1.2rem' }}>☁️</span>
+                <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#34d399' }}>
+                  Supabase Cloud Database (Phone & PC Real-Time Sync)
+                </h3>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginBottom: '14px' }}>
+              Connects to your Supabase project so changes on your phone or laptop sync instantly.
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '12px' }}>
+              <div>
+                <label style={{ fontSize: '0.78rem', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>
+                  Project URL
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://ioibfvtdacuakpckrllf.supabase.co"
+                  value={formData.supabaseUrl || 'https://ioibfvtdacuakpckrllf.supabase.co'}
+                  onChange={(e) => handleChange('supabaseUrl', e.target.value)}
+                  style={{
+                    width: '100%',
+                    background: '#090d16',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: '10px',
+                    padding: '8px 12px',
+                    color: '#f8fafc',
+                    fontSize: '0.82rem',
+                    outline: 'none',
+                    fontFamily: 'var(--font-mono)'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.78rem', color: '#34d399', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                  anon (public) API Key
+                </label>
+                <input
+                  type="password"
+                  placeholder="Paste anon key starting with eyJhbGciOi..."
+                  value={formData.supabaseAnonKey || ''}
+                  onChange={(e) => handleChange('supabaseAnonKey', e.target.value)}
+                  style={{
+                    width: '100%',
+                    background: '#090d16',
+                    border: '1px solid rgba(16, 185, 129, 0.4)',
+                    borderRadius: '10px',
+                    padding: '8px 12px',
+                    color: '#f8fafc',
+                    fontSize: '0.82rem',
+                    outline: 'none',
+                    fontFamily: 'var(--font-mono)'
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={{
+              background: 'rgba(0, 0, 0, 0.35)',
+              borderRadius: '8px',
+              padding: '10px 12px',
+              fontSize: '0.74rem',
+              color: '#94a3b8',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '10px'
+            }}>
+              <span>
+                💡 In Supabase, click <strong>"Copy"</strong> next to <strong>anon public</strong> and paste it into the box above.
+              </span>
+            </div>
+          </div>
+
           {/* Footer Save */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
             <button
