@@ -1,16 +1,63 @@
-# React + Vite
+# Premium Hub — OTT Subscription & Reminder Command Center 🚀
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A high-performance management dashboard and 1-click WhatsApp reminder system built specifically for OTT and digital subscription resellers.
 
-Currently, two official plugins are available:
+![Live Dashboard Preview](src/assets/hero.png)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🌟 Key Features
 
-## React Compiler
+* **📲 1-Click WhatsApp Reminders (Zero Contact Saving)**:
+  * Message clients on WhatsApp directly without having to save their numbers in your phone contacts!
+  * 4 ready-to-use professional message templates:
+    * ⏰ *Upcoming Expiry Reminder (1–2 days before)*
+    * 🚨 *Urgent Expired Alert*
+    * 📦 *New Order Credentials Delivery (Email, Password, Profile & Screen PIN)*
+    * ✅ *Renewal Confirmation (New date & thank you)*
+* **🤖 Telegram Bot Integration**:
+  * Private alerts sent straight to your Telegram bot.
+  * Instant "Send Telegram Alert" summary of accounts expiring today/tomorrow with direct clickable WhatsApp links for each client.
+* **⚡ 1-Click Renewal**:
+  * Tap `+30d` on any client card to immediately extend validity, recalculate expiry date, and prompt to send a WhatsApp confirmation message.
+* **📊 Business KPIs & Margins**:
+  * Real-time metrics for Active subscriptions, Urgent renewals, Expired accounts, and Estimated Net Profit.
+* **👥 Complete Credential Management**:
+  * Tracks Master Email, Password, Profile Name, and Screen PIN with 1-click copy buttons.
+* **📑 Dense Table & Card Grid Views**:
+  * Switch between a visual card grid and a fast dense table for managing huge lists.
+* **📂 CSV & JSON Backup**:
+  * Bulk import existing customer lists from CSV.
+  * Export to CSV for Excel / Google Sheets.
+  * 1-Click full JSON database backup and restore.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the Oxlint configuration
+## 🚀 Instant Deployment to Vercel
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+### Option 1: Import via Vercel Dashboard (Recommended)
+1. Go to [vercel.com/new](https://vercel.com/new).
+2. Connect your GitHub account (`Ryuyjg`).
+3. Select **`Ryuyjg/premiumhub-reminders`**.
+4. Click **Deploy**! Vercel will auto-detect Vite and deploy in seconds.
+
+### Option 2: Run Locally
+```bash
+# Clone the repository
+git clone https://github.com/Ryuyjg/premiumhub-reminders.git
+
+# Enter project directory
+cd premiumhub-reminders
+
+# Install dependencies
+npm install
+
+# Start local development server
+npm run dev
+```
+
+---
+
+## 🛠️ Tech Stack
+* **Framework**: React 19 + Vite 8
+* **Styling**: Custom Obsidian Dark Glassmorphism CSS Design System
+* **Icons**: Lucide React
+* **Storage**: LocalStorage with CSV / JSON backup export & restore
