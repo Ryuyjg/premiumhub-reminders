@@ -20,6 +20,96 @@ export const VALIDITY_PRESETS = [
   { label: '1 Year (365d)', days: 365 },
 ];
 
+export const LOGIN_METHODS = [
+  { id: 'password', label: 'Email & Password', icon: '🔑', desc: 'Netflix, Prime, Crunchyroll with email & password' },
+  { id: 'otp', label: 'Phone Number & OTP', icon: '📱', desc: 'Zee5, Hotstar, SonyLiv, JioCinema where client requests OTP' },
+  { id: 'invite', label: 'Invite / Activation Link', icon: '🔗', desc: 'Spotify Family, YouTube Premium invite link sent to user' },
+  { id: 'profile', label: 'Profile Only (Pre-logged in)', icon: '📺', desc: 'User logs into TV using TV code or shared master profile' }
+];
+
+export const TEMPLATE_VARIABLES = [
+  { key: '{client_name}', label: 'Client Name', sample: 'Rahul Sharma' },
+  { key: '{platform}', label: 'Platform', sample: 'Netflix' },
+  { key: '{plan}', label: 'Plan', sample: '1-Screen UHD Profile' },
+  { key: '{login_type}', label: 'Login Method', sample: 'Email & Password' },
+  { key: '{login_id}', label: 'Login ID / Email', sample: 'netflix.user42@gmail.com' },
+  { key: '{password}', label: 'Password / Instructions', sample: 'StreamPass#2026' },
+  { key: '{profile}', label: 'Profile Name', sample: 'Screen 2 (Rahul)' },
+  { key: '{pin}', label: 'Profile PIN', sample: '4920' },
+  { key: '{expiry_date}', label: 'Expiry Date', sample: 'Nov 20, 2026' },
+  { key: '{days_left}', label: 'Days Remaining', sample: '1 day' },
+  { key: '{price}', label: 'Price Amount', sample: '₹150' },
+  { key: '{upi}', label: 'UPI ID', sample: 'premiumhub@upi' },
+  { key: '{business_name}', label: 'Business Name', sample: 'Premium Hub' },
+  { key: '{notes}', label: 'Client Notes', sample: 'Family plan' },
+  { key: '{signature}', label: 'Signature', sample: '— Team Premium Hub' }
+];
+
+export const DEFAULT_TEMPLATES = {
+  expiry_reminder: `Hi {client_name} 👋,
+
+This is a reminder from *{business_name}*!
+
+Your *{platform}* subscription is expiring soon:
+📺 *Plan:* {plan}
+👤 *Profile:* {profile}
+🔒 *PIN:* {pin}
+📅 *Expiry Date:* {expiry_date}
+
+Would you like to renew to keep your profile and watch history active without interruption?
+
+💰 *Renewal Price:* {price}
+💳 *UPI ID:* {upi}
+
+Please reply with payment screenshot once completed! 🍿
+{signature}`,
+
+  expired_alert: `🚨 *URGENT RENEWAL NOTICE* 🚨
+
+Hello {client_name},
+Your *{platform}* subscription ({profile}) expired on *{expiry_date}*.
+
+To prevent your profile and login access from being assigned to another customer, please renew today!
+
+💰 *Renewal Amount:* {price}
+💳 *UPI ID:* {upi}
+
+Reply here if you wish to renew or need help!
+{signature}`,
+
+  credentials_delivery: `🎉 *Welcome to {business_name}!* 🎉
+
+Thank you for your order! Here are your *{platform}* access details:
+
+📺 *Service:* {platform}
+📦 *Plan:* {plan}
+🔐 *Login Method:* {login_type}
+📧 *Login ID / Email:* {login_id}
+🔑 *Password / Access:* {password}
+👤 *Your Profile:* *{profile}*
+🔒 *Profile PIN:* {pin}
+📅 *Valid Until:* {expiry_date}
+
+⚠️ *Rules & Instructions:*
+1. Login only to your assigned profile.
+2. Do not change master password or account email.
+3. Stream on 1 screen at a time.
+
+Enjoy your movies & shows! 🍿
+{signature}`,
+
+  renewal_confirmed: `✅ *Payment Received & Renewed!* ✅
+
+Hello {client_name},
+Thank you! Your *{platform}* subscription has been successfully renewed.
+
+📅 *New Expiry Date:* *{expiry_date}*
+📺 *Profile:* {profile}
+
+Thank you for trusting *{business_name}*! Let us know if you need any other OTT service. 🍿
+{signature}`
+};
+
 export const DEFAULT_SETTINGS = {
   businessName: 'Premium Hub',
   upiId: 'premiumhub@upi',
@@ -31,7 +121,8 @@ export const DEFAULT_SETTINGS = {
   autoTelegramAlerts: false,
   masterPin: '8590',
   supabaseUrl: 'https://ioibfvtdacuakpckrllf.supabase.co',
-  supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlvaWJmdnRkYWN1YWtwY2tybGxmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI1MTgxOTQsImV4cCI6MjEwODA5NDE5NH0.6Qxxhc-SzTD5GcCCsKYYrcpmXEmt8-11-66uI00DZDk'
+  supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlvaWJmdnRkYWN1YWtwY2tybGxmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI1MTgxOTQsImV4cCI6MjEwODA5NDE5NH0.6Qxxhc-SzTD5GcCCsKYYrcpmXEmt8-11-66uI00DZDk',
+  templates: DEFAULT_TEMPLATES
 };
 
 // Realistic seed data representing real OTT reseller orders

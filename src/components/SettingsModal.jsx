@@ -8,9 +8,16 @@ import {
   ExternalLink, 
   DollarSign, 
   MessageSquare, 
-  Bot 
+  Bot,
+  RotateCcw,
+  Clock,
+  AlertTriangle,
+  Package,
+  CheckCircle2,
+  Sparkles
 } from 'lucide-react';
-import { sendTelegramMessage } from '../utils/helpers';
+import { sendTelegramMessage, renderTemplate } from '../utils/helpers';
+import { TEMPLATE_VARIABLES, DEFAULT_TEMPLATES } from '../utils/constants';
 
 export default function SettingsModal({
   isOpen,
@@ -19,7 +26,14 @@ export default function SettingsModal({
   onSaveSettings,
   onShowToast
 }) {
-  const [formData, setFormData] = useState({ ...settings });
+  const [formData, setFormData] = useState({
+    ...settings,
+    templates: {
+      ...DEFAULT_TEMPLATES,
+      ...(settings?.templates || {})
+    }
+  });
+  const [activeTplTab, setActiveTplTab] = useState('expiry_reminder');
   const [isTestingTelegram, setIsTestingTelegram] = useState(false);
   const [showTelegramGuide, setShowTelegramGuide] = useState(false);
 
@@ -284,6 +298,202 @@ export default function SettingsModal({
                   }}
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Custom WhatsApp & Renewal Message Templates Studio */}
+          <div style={{
+            background: 'rgba(99, 102, 241, 0.08)',
+            border: '1px solid rgba(99, 102, 241, 0.25)',
+            borderRadius: '14px',
+            padding: '16px 18px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <MessageSquare size={18} color="#818cf8" />
+                <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#c7d2fe' }}>
+                  Custom WhatsApp & Renewal Message Templates
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setFormData(prev => ({
+                    ...prev,
+                    templates: {
+                      ...prev.templates,
+                      [activeTplTab]: DEFAULT_TEMPLATES[activeTplTab]
+                    }
+                  }));
+                  onShowToast({ type: 'info', message: 'Reset template to default!' });
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#94a3b8',
+                  fontSize: '0.75rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                <RotateCcw size={13} />
+                <span>Reset to Default</span>
+              </button>
+            </div>
+
+            <p style={{ fontSize: '0.76rem', color: '#94a3b8', marginBottom: '12px' }}>
+              Type your custom message. Any word inside brackets like <code>{'{client_name}'}</code> or <code>{'{expiry_date}'}</code> will be auto-replaced!
+            </p>
+
+            {/* Template Tabs */}
+            <div style={{
+              display: 'flex',
+              gap: '6px',
+              overflowX: 'auto',
+              marginBottom: '12px',
+              paddingBottom: '2px'
+            }}>
+              {[
+                { id: 'expiry_reminder', label: '⏰ Expiry Alarm', icon: <Clock size={13} color="#f59e0b" /> },
+                { id: 'expired_alert', label: '🚨 Expired Notice', icon: <AlertTriangle size={13} color="#ef4444" /> },
+                { id: 'credentials_delivery', label: '📦 Order Delivery', icon: <Package size={13} color="#22c55e" /> },
+                { id: 'renewal_confirmed', label: '✅ Renewed OK', icon: <CheckCircle2 size={13} color="#38bdf8" /> }
+              ].map(tab => {
+                const isActive = activeTplTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTplTab(tab.id)}
+                    style={{
+                      background: isActive ? '#6366f1' : 'rgba(255, 255, 255, 0.04)',
+                      border: `1px solid ${isActive ? '#818cf8' : 'rgba(255, 255, 255, 0.08)'}`,
+                      color: isActive ? '#ffffff' : '#94a3b8',
+                      borderRadius: '8px',
+                      padding: '6px 10px',
+                      fontSize: '0.78rem',
+                      fontWeight: isActive ? 700 : 500,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {tab.icon}
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Clickable Variable Tags */}
+            <div style={{ marginBottom: '10px' }}>
+              <div style={{ fontSize: '0.72rem', color: '#64748b', marginBottom: '6px', fontWeight: 600 }}>
+                Click any tag below to insert into your template:
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {TEMPLATE_VARIABLES.map(v => (
+                  <button
+                    key={v.key}
+                    type="button"
+                    onClick={() => {
+                      const cur = formData.templates?.[activeTplTab] || '';
+                      setFormData(prev => ({
+                        ...prev,
+                        templates: {
+                          ...prev.templates,
+                          [activeTplTab]: cur + ' ' + v.key
+                        }
+                      }));
+                    }}
+                    title={`Inserts ${v.sample}`}
+                    style={{
+                      background: 'rgba(99, 102, 241, 0.15)',
+                      border: '1px solid rgba(99, 102, 241, 0.3)',
+                      color: '#a5b4fc',
+                      borderRadius: '6px',
+                      padding: '3px 7px',
+                      fontSize: '0.72rem',
+                      fontFamily: 'var(--font-mono)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    +{v.key}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Template Editor Textarea */}
+            <textarea
+              rows={8}
+              value={formData.templates?.[activeTplTab] || DEFAULT_TEMPLATES[activeTplTab]}
+              onChange={(e) => {
+                const text = e.target.value;
+                setFormData(prev => ({
+                  ...prev,
+                  templates: {
+                    ...prev.templates,
+                    [activeTplTab]: text
+                  }
+                }));
+              }}
+              style={{
+                width: '100%',
+                background: '#090d16',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                borderRadius: '10px',
+                padding: '12px',
+                color: '#f8fafc',
+                fontSize: '0.84rem',
+                lineHeight: 1.5,
+                outline: 'none',
+                fontFamily: 'inherit',
+                resize: 'vertical',
+                marginBottom: '10px'
+              }}
+            />
+
+            {/* Live Sample Preview */}
+            <div style={{
+              background: 'rgba(0, 0, 0, 0.4)',
+              border: '1px solid rgba(255, 255, 255, 0.05)',
+              borderRadius: '8px',
+              padding: '10px 12px',
+              fontSize: '0.75rem',
+              color: '#cbd5e1'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#34d399', fontWeight: 600, marginBottom: '4px' }}>
+                <Sparkles size={13} />
+                <span>Live Sample Preview (What client will receive):</span>
+              </div>
+              <pre style={{
+                whiteSpace: 'pre-wrap',
+                fontFamily: 'inherit',
+                color: '#94a3b8',
+                margin: 0
+              }}>
+                {renderTemplate(
+                  formData.templates?.[activeTplTab] || DEFAULT_TEMPLATES[activeTplTab],
+                  {
+                    clientName: 'Rahul Sharma',
+                    platform: 'netflix',
+                    planType: '1-Screen UHD Profile',
+                    loginMethod: 'password',
+                    accountEmail: 'netflix.user42@gmail.com',
+                    accountPassword: 'Password@2026',
+                    profileName: 'Screen 2',
+                    screenPin: '4920',
+                    expiryDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    sellPrice: 150,
+                    notes: 'Regular client'
+                  },
+                  formData
+                )}
+              </pre>
             </div>
           </div>
 

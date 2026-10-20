@@ -1,4 +1,4 @@
-import { PLATFORMS } from './constants';
+import { PLATFORMS, LOGIN_METHODS, DEFAULT_TEMPLATES } from './constants';
 
 export function calculateExpiryDate(purchaseDateStr, days) {
   if (!purchaseDateStr) return '';
@@ -37,7 +37,7 @@ export function getExpiryStatus(expiryDateStr) {
     const overdue = Math.abs(days);
     return {
       statusKey: 'expired',
-      text: overdue === 1 ? 'Expired yesterday' : `Expired ${overdue} days ago`,
+      text: overdue === 1 ? 'Expired yesterday' : `Expired ${overdue}d ago`,
       color: '#ef4444',
       bg: 'rgba(239, 68, 68, 0.18)',
       isUrgent: true,
@@ -70,7 +70,7 @@ export function getExpiryStatus(expiryDateStr) {
   if (days <= 3) {
     return {
       statusKey: 'soon',
-      text: `Expires in ${days} days`,
+      text: `Expires in ${days}d`,
       color: '#facc15',
       bg: 'rgba(250, 204, 21, 0.18)',
       isUrgent: true,
@@ -81,7 +81,7 @@ export function getExpiryStatus(expiryDateStr) {
   if (days <= 7) {
     return {
       statusKey: 'week',
-      text: `Expires in ${days} days`,
+      text: `Expires in ${days}d`,
       color: '#60a5fa',
       bg: 'rgba(96, 165, 250, 0.15)',
       isUrgent: false,
@@ -91,7 +91,7 @@ export function getExpiryStatus(expiryDateStr) {
 
   return {
     statusKey: 'active',
-    text: `Active (${days} days left)`,
+    text: `Active (${days}d left)`,
     color: '#34d399',
     bg: 'rgba(52, 211, 153, 0.15)',
     isUrgent: false,
@@ -116,6 +116,10 @@ export function getPlatformInfo(platformId) {
   };
 }
 
+export function getLoginMethodInfo(methodId) {
+  return LOGIN_METHODS.find(m => m.id === methodId) || LOGIN_METHODS[0];
+}
+
 export function cleanPhoneNumber(phone, countryCode = '+91') {
   if (!phone) return '';
   const digits = phone.replace(/\D/g, '');
@@ -133,91 +137,143 @@ export function generateWhatsAppUrl(phone, countryCode, message) {
   return `https://wa.me/${fullPhone}?text=${encodedMsg}`;
 }
 
-export function buildWhatsAppMessage(templateType, sub, settings) {
+export function renderTemplate(templateStr, sub, settings) {
+  if (!templateStr) return '';
   const p = getPlatformInfo(sub.platform);
-  const business = settings.businessName || 'Premium Hub';
-  const upi = settings.upiId || 'premiumhub@upi';
-  const curr = settings.currency || '₹';
-  const sig = settings.whatsappSignature || `— Team ${business}`;
+  const method = getLoginMethodInfo(sub.loginMethod);
+  const business = settings?.businessName || 'Premium Hub';
+  const upi = settings?.upiId || 'premiumhub@upi';
+  const curr = settings?.currency || '₹';
+  const sig = settings?.whatsappSignature || `— Team ${business}`;
   const expiryFormatted = formatDate(sub.expiryDate);
+  const daysDiff = getDaysDifference(sub.expiryDate);
 
-  switch (templateType) {
-    case 'expiry_reminder':
-      return (
-`Hi ${sub.clientName} 👋,
+  let daysLeftStr = 'today';
+  if (daysDiff < 0) daysLeftStr = `expired ${Math.abs(daysDiff)} days ago`;
+  else if (daysDiff === 0) daysLeftStr = 'expires today';
+  else if (daysDiff === 1) daysLeftStr = 'expires tomorrow';
+  else daysLeftStr = `${daysDiff} days left`;
 
-This is a friendly reminder from *${business}*!
+  const passwordOrOtp = sub.loginMethod === 'otp'
+    ? (sub.accountPassword || 'OTP Login (Request OTP on WhatsApp when logging in)')
+    : (sub.accountPassword || 'Shared in Chat');
 
-Your *${p.name}* subscription is expiring soon:
-📺 *Plan:* ${sub.planType || 'OTT Access'}
-👤 *Profile:* ${sub.profileName || 'Your profile'}
-📅 *Expiry Date:* ${expiryFormatted}
+  // Multi-synonym lookup map for maximum user convenience
+  const clientNameVal = sub.clientName || 'Customer';
+  const platformVal = p.name || 'OTT Service';
+  const planVal = sub.planType || '1-Screen Profile';
+  const loginTypeVal = method.label;
+  const loginIdVal = sub.accountEmail || 'Shared in Chat';
+  const profileVal = sub.profileName || 'Assigned Profile';
+  const pinVal = sub.screenPin ? sub.screenPin : 'No PIN';
+  const priceVal = `${curr}${sub.sellPrice || 0}`;
 
-Would you like to renew to keep your profile and watch history active without interruption?
+  const tagMap = {
+    // Client Name
+    client_name: clientNameVal,
+    clientname: clientNameVal,
+    client: clientNameVal,
+    name: clientNameVal,
+    customer: clientNameVal,
+    user: clientNameVal,
 
-💰 *Renewal Price:* ${curr}${sub.sellPrice || '0'}
-💳 *UPI ID:* ${upi}
+    // Platform
+    platform: platformVal,
+    service: platformVal,
+    ott: platformVal,
+    app: platformVal,
 
-Please reply with the payment screenshot once done! 🍿
-${sig}`
-      );
+    // Plan
+    plan: planVal,
+    plan_type: planVal,
+    plantype: planVal,
 
-    case 'expired_alert':
-      return (
-`🚨 *URGENT RENEWAL NOTICE* 🚨
+    // Login Method
+    login_type: loginTypeVal,
+    logintype: loginTypeVal,
+    login_method: loginTypeVal,
+    loginmethod: loginTypeVal,
 
-Hello ${sub.clientName},
-Your *${p.name}* subscription (${sub.profileName || 'Profile'}) expired on *${expiryFormatted}*.
+    // Login ID / Email / Phone
+    login_id: loginIdVal,
+    loginid: loginIdVal,
+    email: loginIdVal,
+    account_email: loginIdVal,
+    accountemail: loginIdVal,
+    id: loginIdVal,
+    phone: loginIdVal,
+    login_phone: loginIdVal,
 
-To prevent your profile and login access from being assigned to another customer, please renew today!
+    // Password / OTP
+    password: passwordOrOtp,
+    pass: passwordOrOtp,
+    otp: passwordOrOtp,
+    account_password: passwordOrOtp,
+    credentials: passwordOrOtp,
 
-💰 *Amount:* ${curr}${sub.sellPrice || '0'}
-💳 *UPI:* ${upi}
+    // Profile & PIN
+    profile: profileVal,
+    profile_name: profileVal,
+    profilename: profileVal,
+    screen: profileVal,
+    pin: pinVal,
+    screen_pin: pinVal,
+    screenpin: pinVal,
+    profile_pin: pinVal,
+    profilepin: pinVal,
 
-Reply here if you wish to renew or need help!
-${sig}`
-      );
+    // Expiry Date & Duration
+    expiry_date: expiryFormatted,
+    expirydate: expiryFormatted,
+    expiry: expiryFormatted,
+    expire_date: expiryFormatted,
+    date: expiryFormatted,
+    days_left: daysLeftStr,
+    daysleft: daysLeftStr,
+    days: daysLeftStr,
+    remaining: daysLeftStr,
 
-    case 'credentials_delivery':
-      return (
-`🎉 *Welcome to ${business}!* 🎉
+    // Price & Payment
+    price: priceVal,
+    renewal_price: priceVal,
+    amount: priceVal,
+    cost: priceVal,
+    upi: upi,
+    upi_id: upi,
+    upiid: upi,
 
-Thank you for your order! Here are your *${p.name}* login credentials:
+    // Business & Signature
+    business_name: business,
+    businessname: business,
+    business: business,
+    shop: business,
+    signature: sig,
+    regards: sig,
+    team: sig,
 
-📺 *Service:* ${p.name}
-📦 *Plan:* ${sub.planType || '1-Screen'}
-📧 *Login Email:* \`${sub.accountEmail || 'Shared in Chat'}\`
-🔑 *Password:* \`${sub.accountPassword || 'Shared in Chat'}\`
-👤 *Your Profile:* *${sub.profileName || 'Assigned Profile'}*
-🔒 *Profile PIN:* \`${sub.screenPin || 'No PIN'}\`
-📅 *Valid Until:* ${expiryFormatted}
+    // Notes
+    notes: sub.notes || '',
+    note: sub.notes || ''
+  };
 
-⚠️ *Rules & Instructions:*
-1. Login only to your assigned profile.
-2. Do NOT change password or email.
-3. Stream on 1 screen at a time.
+  // Replace all {bracket_tags} ignoring case, spaces, and hyphens
+  return templateStr.replace(/\{([^{}]+)\}/g, (match, rawTag) => {
+    const key = rawTag.trim().toLowerCase().replace(/[\s\-_]+/g, '_');
+    if (tagMap[key] !== undefined) {
+      return tagMap[key];
+    }
+    const keyNoUnderscore = key.replace(/_/g, '');
+    if (tagMap[keyNoUnderscore] !== undefined) {
+      return tagMap[keyNoUnderscore];
+    }
+    return match; // Keep unchanged if unrecognized bracket
+  });
+}
 
-Enjoy your movies & shows! 🍿
-${sig}`
-      );
-
-    case 'renewal_confirmed':
-      return (
-`✅ *Payment Received & Renewed!* ✅
-
-Hello ${sub.clientName},
-Thank you! Your *${p.name}* subscription has been successfully renewed.
-
-📅 *New Expiry Date:* *${expiryFormatted}*
-📺 *Profile:* ${sub.profileName || 'Your profile'}
-
-Thank you for trusting *${business}*! Let us know if you need any other OTT service. 🍿
-${sig}`
-      );
-
-    default:
-      return `Hello ${sub.clientName}, reminder from ${business} regarding your ${p.name} subscription expiring on ${expiryFormatted}.`;
-  }
+export function buildWhatsAppMessage(templateType, sub, settings) {
+  const templates = settings?.templates || DEFAULT_TEMPLATES;
+  const templateStr = templates[templateType] || DEFAULT_TEMPLATES[templateType] || DEFAULT_TEMPLATES.expiry_reminder;
+  return renderTemplate(templateStr, sub, settings);
 }
 
 export async function sendTelegramMessage(botToken, chatId, message) {
@@ -248,13 +304,12 @@ export async function sendTelegramMessage(botToken, chatId, message) {
 }
 
 export function buildTelegramDailyDigest(subscriptions, settings) {
-  const business = settings.businessName || 'Premium Hub';
-  const curr = settings.currency || '₹';
-  const today = new Date().toISOString().split('T')[0];
+  const business = settings?.businessName || 'Premium Hub';
+  const curr = settings?.currency || '₹';
 
   const urgentList = subscriptions.filter(s => {
     const days = getDaysDifference(s.expiryDate);
-    return days <= 2; // expired or expiring within 48h
+    return days <= 2;
   });
 
   if (urgentList.length === 0) {

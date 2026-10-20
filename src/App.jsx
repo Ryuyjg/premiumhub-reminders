@@ -5,6 +5,7 @@ import SubscriptionCard from './components/SubscriptionCard';
 import SubscriptionTable from './components/SubscriptionTable';
 import WhatsAppModal from './components/WhatsAppModal';
 import SubscriptionModal from './components/SubscriptionModal';
+import RenewalModal from './components/RenewalModal';
 import SettingsModal from './components/SettingsModal';
 import BulkImportExportModal from './components/BulkImportExportModal';
 import Toast from './components/Toast';
@@ -58,6 +59,7 @@ export default function App() {
 
   // Modals state
   const [whatsAppSub, setWhatsAppSub] = useState(null);
+  const [renewalSub, setRenewalSub] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingSub, setEditingSub] = useState(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -260,6 +262,45 @@ export default function App() {
     if (confirm(`Renewed! Would you like to send WhatsApp confirmation to ${sub.clientName}?`)) {
       setWhatsAppSub(updated);
     }
+  };
+
+  // Dedicated Renewal Handler (supports custom days, price, and instant WhatsApp)
+  const handleConfirmRenewal = async (updatedSub, openWhatsApp = true) => {
+    setSubscriptions(prev => prev.map(s => s.id === updatedSub.id ? updatedSub : s));
+    showToast({ 
+      type: 'success', 
+      message: `🎉 Renewed ${updatedSub.clientName} until ${updatedSub.expiryDate}!` 
+    });
+
+    const { error } = await supabase.from('subscriptions').upsert(mapToDb(updatedSub));
+    if (error) {
+      console.error('Supabase renew error:', error);
+      showToast({ type: 'error', message: `Renew error: ${error.message}` });
+      fetchCloudSubscriptions(true);
+    }
+
+    if (openWhatsApp) {
+      setWhatsAppSub(updatedSub);
+    }
+  };
+
+  // Save template permanently from WhatsApp modal or Settings modal
+  const handleSaveTemplate = (type, content) => {
+    setSettings(prev => {
+      const updated = {
+        ...prev,
+        templates: {
+          ...(prev.templates || DEFAULT_SETTINGS.templates),
+          [type]: content
+        }
+      };
+      try {
+        localStorage.setItem('premium_hub_settings_v1', JSON.stringify(updated));
+      } catch (e) {
+        console.error('Error saving settings', e);
+      }
+      return updated;
+    });
   };
 
   // Send Daily Telegram Alert
@@ -607,6 +648,7 @@ export default function App() {
                 subscription={sub}
                 currency={settings.currency || '₹'}
                 onOpenWhatsApp={(item) => setWhatsAppSub(item)}
+                onOpenRenewalModal={(item) => setRenewalSub(item)}
                 onRenew30Days={handleRenew30Days}
                 onEdit={(item) => { setEditingSub(item); setIsAddModalOpen(true); }}
                 onDelete={handleDeleteSubscription}
@@ -619,6 +661,7 @@ export default function App() {
             subscriptions={filteredSubscriptions}
             currency={settings.currency || '₹'}
             onOpenWhatsApp={(item) => setWhatsAppSub(item)}
+            onOpenRenewalModal={(item) => setRenewalSub(item)}
             onRenew30Days={handleRenew30Days}
             onEdit={(item) => { setEditingSub(item); setIsAddModalOpen(true); }}
             onDelete={handleDeleteSubscription}
@@ -670,6 +713,16 @@ export default function App() {
         subscription={whatsAppSub}
         settings={settings}
         onClose={() => setWhatsAppSub(null)}
+        onShowToast={showToast}
+        onSaveTemplate={handleSaveTemplate}
+      />
+
+      <RenewalModal
+        isOpen={!!renewalSub}
+        subscription={renewalSub}
+        settings={settings}
+        onClose={() => setRenewalSub(null)}
+        onConfirmRenewal={handleConfirmRenewal}
         onShowToast={showToast}
       />
 

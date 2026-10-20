@@ -7,18 +7,22 @@ import {
   Lock, 
   Mail, 
   Copy, 
-  Check 
+  Check,
+  Key,
+  Smartphone
 } from 'lucide-react';
 import { 
   getPlatformInfo, 
   getExpiryStatus, 
-  formatDate 
+  formatDate,
+  getLoginMethodInfo
 } from '../utils/helpers';
 
 export default function SubscriptionTable({
   subscriptions,
   currency = '₹',
   onOpenWhatsApp,
+  onOpenRenewalModal,
   onRenew30Days,
   onEdit,
   onDelete,
@@ -32,6 +36,14 @@ export default function SubscriptionTable({
     setCopiedId(id);
     onShowToast({ type: 'success', message: 'Copied!' });
     setTimeout(() => setCopiedId(null), 1500);
+  };
+
+  const handleRenewClick = (sub) => {
+    if (onOpenRenewalModal) {
+      onOpenRenewalModal(sub);
+    } else if (onRenew30Days) {
+      onRenew30Days(sub);
+    }
   };
 
   return (
@@ -59,9 +71,9 @@ export default function SubscriptionTable({
             letterSpacing: '0.05em'
           }}>
             <th style={{ padding: '14px 18px' }}>Client</th>
-            <th style={{ padding: '14px 18px' }}>Platform & Plan</th>
+            <th style={{ padding: '14px 18px' }}>Platform & Access</th>
             <th style={{ padding: '14px 18px' }}>Profile & PIN</th>
-            <th style={{ padding: '14px 18px' }}>Account ID</th>
+            <th style={{ padding: '14px 18px' }}>Credentials</th>
             <th style={{ padding: '14px 18px' }}>Expiry Date</th>
             <th style={{ padding: '14px 18px' }}>Price / Margin</th>
             <th style={{ padding: '14px 18px', textAlign: 'right' }}>Actions</th>
@@ -71,6 +83,7 @@ export default function SubscriptionTable({
           {subscriptions.map(sub => {
             const platform = getPlatformInfo(sub.platform);
             const status = getExpiryStatus(sub.expiryDate);
+            const method = getLoginMethodInfo(sub.loginMethod);
             const profit = (parseFloat(sub.sellPrice) || 0) - (parseFloat(sub.costPrice) || 0);
 
             return (
@@ -93,26 +106,38 @@ export default function SubscriptionTable({
 
                 {/* Platform & Plan */}
                 <td style={{ padding: '12px 18px' }}>
-                  <div style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    background: platform.bg,
-                    border: `1px solid ${platform.color}40`,
-                    padding: '2px 8px',
-                    borderRadius: '6px',
-                    color: '#ffffff',
-                    fontSize: '0.78rem',
-                    fontWeight: 700,
-                    marginBottom: '4px'
-                  }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                    <div style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      background: platform.bg,
+                      border: `1px solid ${platform.color}40`,
+                      padding: '2px 7px',
+                      borderRadius: '6px',
+                      color: '#ffffff',
+                      fontSize: '0.75rem',
+                      fontWeight: 700
+                    }}>
+                      <span style={{
+                        width: '6px',
+                        height: '6px',
+                        borderRadius: '50%',
+                        background: platform.color
+                      }}></span>
+                      {platform.name}
+                    </div>
+
                     <span style={{
-                      width: '6px',
-                      height: '6px',
-                      borderRadius: '50%',
-                      background: platform.color
-                    }}></span>
-                    {platform.name}
+                      fontSize: '0.68rem',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      padding: '1px 6px',
+                      borderRadius: '4px',
+                      color: '#cbd5e1'
+                    }}>
+                      {method.icon} {method.id === 'otp' ? 'OTP' : method.id === 'password' ? 'Pass' : method.id === 'invite' ? 'Link' : 'Profile'}
+                    </span>
                   </div>
                   <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
                     {sub.planType || '1-Screen'}
@@ -146,7 +171,7 @@ export default function SubscriptionTable({
                   )}
                 </td>
 
-                {/* Account Email */}
+                {/* Credentials (Email / Phone + Password / OTP) */}
                 <td style={{ padding: '12px 18px' }}>
                   {sub.accountEmail ? (
                     <button
@@ -154,15 +179,16 @@ export default function SubscriptionTable({
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: '#94a3b8',
+                        color: '#cbd5e1',
                         fontSize: '0.78rem',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '4px'
+                        gap: '4px',
+                        marginBottom: '3px'
                       }}
                     >
-                      <Mail size={12} color="#6366f1" />
+                      {sub.loginMethod === 'otp' ? <Smartphone size={12} color="#f59e0b" /> : <Mail size={12} color="#6366f1" />}
                       <span style={{ maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {sub.accountEmail}
                       </span>
@@ -170,6 +196,31 @@ export default function SubscriptionTable({
                     </button>
                   ) : (
                     <span style={{ color: '#64748b' }}>—</span>
+                  )}
+
+                  {sub.accountPassword && (
+                    <button
+                      onClick={() => copyText(sub.accountPassword, `pass-${sub.id}`)}
+                      title="Copy Password / Access Info"
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.04)',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        borderRadius: '4px',
+                        padding: '1px 5px',
+                        fontSize: '0.68rem',
+                        color: '#94a3b8',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px'
+                      }}
+                    >
+                      <Key size={10} color="#eab308" />
+                      <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {sub.loginMethod === 'otp' ? 'OTP notes' : '••••••••'}
+                      </span>
+                      {copiedId === `pass-${sub.id}` ? <Check size={10} color="#10b981" /> : <Copy size={10} />}
+                    </button>
                   )}
                 </td>
 
@@ -230,8 +281,8 @@ export default function SubscriptionTable({
                     </button>
 
                     <button
-                      onClick={() => onRenew30Days(sub)}
-                      title="Renew +30 Days"
+                      onClick={() => handleRenewClick(sub)}
+                      title="Open Renewal Setup"
                       style={{
                         background: 'rgba(99, 102, 241, 0.15)',
                         border: '1px solid rgba(99, 102, 241, 0.35)',
@@ -240,13 +291,14 @@ export default function SubscriptionTable({
                         padding: '6px 8px',
                         cursor: 'pointer',
                         fontSize: '0.75rem',
+                        fontWeight: 600,
                         display: 'flex',
                         alignItems: 'center',
                         gap: '3px'
                       }}
                     >
                       <RotateCw size={12} />
-                      <span>+30d</span>
+                      <span>Renew</span>
                     </button>
 
                     <button

@@ -18,13 +18,15 @@ import {
   getPlatformInfo, 
   getExpiryStatus, 
   formatDate, 
-  cleanPhoneNumber 
+  cleanPhoneNumber,
+  getLoginMethodInfo
 } from '../utils/helpers';
 
 export default function SubscriptionCard({
   subscription,
   currency = '₹',
   onOpenWhatsApp,
+  onOpenRenewalModal,
   onRenew30Days,
   onEdit,
   onDelete,
@@ -35,6 +37,7 @@ export default function SubscriptionCard({
 
   const platform = getPlatformInfo(subscription.platform);
   const status = getExpiryStatus(subscription.expiryDate);
+  const method = getLoginMethodInfo(subscription.loginMethod);
   const profit = (parseFloat(subscription.sellPrice) || 0) - (parseFloat(subscription.costPrice) || 0);
 
   const copyToClipboard = (text, fieldName) => {
@@ -164,18 +167,32 @@ export default function SubscriptionCard({
           flexDirection: 'column',
           gap: '6px'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#cbd5e1' }}>
+          {/* Plan & Method badge */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#cbd5e1' }}>
             <span style={{ color: '#64748b' }}>Plan:</span>
-            <span style={{ fontWeight: 600 }}>{subscription.planType || '1-Screen'}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontWeight: 600 }}>{subscription.planType || '1-Screen'}</span>
+              <span style={{
+                fontSize: '0.68rem',
+                background: 'rgba(255, 255, 255, 0.06)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                padding: '1px 6px',
+                borderRadius: '4px',
+                color: '#cbd5e1'
+              }}>
+                {method.icon} {method.label}
+              </span>
+            </div>
           </div>
 
+          {/* Profile & PIN */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ color: '#64748b' }}>Profile / PIN:</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ fontWeight: 600, color: '#f8fafc' }}>
                 {subscription.profileName || 'Default'}
               </span>
-              {subscription.screenPin && (
+              {subscription.screenPin ? (
                 <button
                   onClick={() => copyToClipboard(subscription.screenPin, 'PIN')}
                   title="Click to copy PIN"
@@ -192,20 +209,24 @@ export default function SubscriptionCard({
                     gap: '4px'
                   }}
                 >
-                  {copiedField === 'PIN' ? <Check size={10} /> : <Lock size={10} />}
-                  <span>{subscription.screenPin}</span>
+                  {copiedField === 'PIN' ? <Check size={10} color="#10b981" /> : <Lock size={10} />}
+                  <span>PIN: {subscription.screenPin}</span>
                 </button>
+              ) : (
+                <span style={{ fontSize: '0.7rem', color: '#64748b' }}>No PIN</span>
               )}
             </div>
           </div>
 
-          {/* Account Email (Masked / Copyable) */}
+          {/* Account Login ID (Phone or Email) */}
           {subscription.accountEmail && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
-              <span style={{ color: '#64748b' }}>Account:</span>
+              <span style={{ color: '#64748b' }}>
+                {subscription.loginMethod === 'otp' ? 'Login Phone:' : 'Login ID:'}
+              </span>
               <button
-                onClick={() => copyToClipboard(subscription.accountEmail, 'Email')}
-                title="Click to copy Email"
+                onClick={() => copyToClipboard(subscription.accountEmail, 'Login ID')}
+                title="Click to copy"
                 style={{
                   background: 'none',
                   border: 'none',
@@ -221,8 +242,39 @@ export default function SubscriptionCard({
                 }}
               >
                 <Mail size={12} color="#6366f1" />
-                <span>{subscription.accountEmail}</span>
-                {copiedField === 'Email' ? <Check size={12} color="#10b981" /> : <Copy size={12} />}
+                <span style={{ fontFamily: 'var(--font-mono)' }}>{subscription.accountEmail}</span>
+                {copiedField === 'Login ID' ? <Check size={12} color="#10b981" /> : <Copy size={12} />}
+              </button>
+            </div>
+          )}
+
+          {/* Password or OTP Note */}
+          {subscription.accountPassword && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
+              <span style={{ color: '#64748b' }}>
+                {subscription.loginMethod === 'otp' ? 'Access:' : 'Password:'}
+              </span>
+              <button
+                onClick={() => copyToClipboard(subscription.accountPassword, 'Password/Access')}
+                title="Click to copy"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: subscription.loginMethod === 'otp' ? '#fde047' : '#94a3b8',
+                  fontSize: '0.75rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  maxWidth: '180px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}
+              >
+                <span style={{ fontFamily: subscription.loginMethod === 'otp' ? 'inherit' : 'var(--font-mono)' }}>
+                  {subscription.accountPassword}
+                </span>
+                {copiedField === 'Password/Access' ? <Check size={12} color="#10b981" /> : <Copy size={12} />}
               </button>
             </div>
           )}
@@ -302,10 +354,10 @@ export default function SubscriptionCard({
           <span>WhatsApp</span>
         </button>
 
-        {/* 1-Click 30-day Renewal */}
+        {/* Renewal Button */}
         <button
-          onClick={() => onRenew30Days(subscription)}
-          title="Renew for 30 more days"
+          onClick={() => (onOpenRenewalModal || onRenew30Days)(subscription)}
+          title="Open Renewal Setup"
           style={{
             flex: 1,
             background: 'rgba(99, 102, 241, 0.15)',
@@ -323,7 +375,7 @@ export default function SubscriptionCard({
           }}
         >
           <RotateCw size={13} />
-          <span>+30d</span>
+          <span>Renew</span>
         </button>
 
         {/* Edit Button */}

@@ -12,7 +12,7 @@ import {
   DollarSign, 
   Layers 
 } from 'lucide-react';
-import { PLATFORMS, VALIDITY_PRESETS } from '../utils/constants';
+import { PLATFORMS, VALIDITY_PRESETS, LOGIN_METHODS } from '../utils/constants';
 import { calculateExpiryDate } from '../utils/helpers';
 
 export default function SubscriptionModal({
@@ -30,6 +30,7 @@ export default function SubscriptionModal({
     countryCode: defaultCountryCode,
     platform: 'netflix',
     planType: '1-Screen UHD Profile',
+    loginMethod: 'password',
     accountEmail: '',
     accountPassword: '',
     profileName: '',
@@ -47,6 +48,7 @@ export default function SubscriptionModal({
     if (initialData && mode === 'edit') {
       setFormData({
         ...initialData,
+        loginMethod: initialData.loginMethod || 'password',
         costPrice: initialData.costPrice || 0,
         sellPrice: initialData.sellPrice || 0,
         countryCode: initialData.countryCode || defaultCountryCode
@@ -59,6 +61,7 @@ export default function SubscriptionModal({
         countryCode: defaultCountryCode,
         platform: 'netflix',
         planType: '1-Screen UHD Profile',
+        loginMethod: 'password',
         accountEmail: '',
         accountPassword: '',
         profileName: '',
@@ -394,27 +397,101 @@ export default function SubscriptionModal({
             </div>
           </div>
 
-          {/* Section 3: Credentials (Private/Inventory) */}
+          {/* Section 3: Login Method & Credentials */}
           <div style={{
             background: 'rgba(255, 255, 255, 0.02)',
             border: '1px solid rgba(255, 255, 255, 0.06)',
-            borderRadius: '12px',
-            padding: '14px 16px'
+            borderRadius: '14px',
+            padding: '16px'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
               <Shield size={16} color="#f59e0b" />
-              <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#fcd34d' }}>
-                Account Credentials (For Client Delivery & Reference)
+              <h3 style={{ fontSize: '0.88rem', fontWeight: 700, color: '#fcd34d' }}>
+                Account Access & Login Method
               </h3>
             </div>
+
+            {/* Login Method Radio Pills */}
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ fontSize: '0.78rem', color: '#94a3b8', display: 'block', marginBottom: '8px', fontWeight: 600 }}>
+                Select How Client Accesses the Account:
+              </label>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                gap: '8px'
+              }}>
+                {LOGIN_METHODS.map(method => {
+                  const isSelected = (formData.loginMethod || 'password') === method.id;
+                  return (
+                    <button
+                      key={method.id}
+                      type="button"
+                      onClick={() => {
+                        handleInputChange('loginMethod', method.id);
+                        if (method.id === 'otp' && !formData.accountPassword) {
+                          handleInputChange('accountPassword', 'OTP Login (Client requests OTP)');
+                        }
+                      }}
+                      style={{
+                        background: isSelected ? 'rgba(99, 102, 241, 0.25)' : 'rgba(255, 255, 255, 0.03)',
+                        border: `1px solid ${isSelected ? '#818cf8' : 'rgba(255, 255, 255, 0.08)'}`,
+                        borderRadius: '10px',
+                        padding: '8px 10px',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        color: isSelected ? '#ffffff' : '#94a3b8',
+                        fontSize: '0.8rem',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: isSelected ? 700 : 500 }}>
+                        <span>{method.icon}</span>
+                        <span>{method.label}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Dynamic Helper Note */}
+            {formData.loginMethod === 'otp' && (
+              <div style={{
+                background: 'rgba(245, 158, 11, 0.1)',
+                border: '1px solid rgba(245, 158, 11, 0.25)',
+                borderRadius: '8px',
+                padding: '8px 12px',
+                fontSize: '0.75rem',
+                color: '#fde047',
+                marginBottom: '14px'
+              }}>
+                📱 <strong>Phone Number OTP:</strong> Perfect for Zee5, Disney+ Hotstar, JioCinema, SonyLIV. Enter the registered mobile number. When the client signs in on TV/mobile, they request OTP and you provide it.
+              </div>
+            )}
+
+            {formData.loginMethod === 'invite' && (
+              <div style={{
+                background: 'rgba(34, 197, 94, 0.1)',
+                border: '1px solid rgba(34, 197, 94, 0.25)',
+                borderRadius: '8px',
+                padding: '8px 12px',
+                fontSize: '0.75rem',
+                color: '#86efac',
+                marginBottom: '14px'
+              }}>
+                🔗 <strong>Family Invite:</strong> For Spotify Family or YouTube Premium. Enter the client's Google/Spotify email or activation invitation link.
+              </div>
+            )}
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
               <div>
                 <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>
-                  Login Email / ID
+                  {formData.loginMethod === 'otp' ? 'Login Phone Number (e.g. 6238504620)' : formData.loginMethod === 'invite' ? 'Client Email or Invite Link' : 'Login Email / ID'}
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. netflix.shared44@gmail.com"
+                  placeholder={formData.loginMethod === 'otp' ? 'e.g. 6238504620' : formData.loginMethod === 'invite' ? 'e.g. invite.spotify.com/...' : 'e.g. netflix.shared44@gmail.com'}
                   value={formData.accountEmail}
                   onChange={(e) => handleInputChange('accountEmail', e.target.value)}
                   style={{
@@ -422,9 +499,9 @@ export default function SubscriptionModal({
                     background: '#090d16',
                     border: '1px solid rgba(255, 255, 255, 0.1)',
                     borderRadius: '10px',
-                    padding: '8px 12px',
+                    padding: '10px 12px',
                     color: '#f8fafc',
-                    fontSize: '0.85rem',
+                    fontSize: '0.88rem',
                     outline: 'none'
                   }}
                 />
@@ -432,11 +509,11 @@ export default function SubscriptionModal({
 
               <div>
                 <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>
-                  Login Password
+                  {formData.loginMethod === 'otp' ? 'OTP Instructions' : formData.loginMethod === 'invite' ? 'Invite Notes' : 'Login Password'}
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Pass#2026 or OTP login"
+                  placeholder={formData.loginMethod === 'otp' ? 'OTP Login (Client requests OTP)' : 'e.g. Pass#2026'}
                   value={formData.accountPassword}
                   onChange={(e) => handleInputChange('accountPassword', e.target.value)}
                   style={{
@@ -444,9 +521,9 @@ export default function SubscriptionModal({
                     background: '#090d16',
                     border: '1px solid rgba(255, 255, 255, 0.1)',
                     borderRadius: '10px',
-                    padding: '8px 12px',
+                    padding: '10px 12px',
                     color: '#f8fafc',
-                    fontSize: '0.85rem',
+                    fontSize: '0.88rem',
                     outline: 'none'
                   }}
                 />

@@ -28,6 +28,7 @@ export function mapFromDb(row) {
     costPrice: row.cost_price || 0,
     sellPrice: row.sell_price || 0,
     paymentStatus: row.payment_status || 'paid',
+    loginMethod: row.login_method || 'password',
     notes: row.notes || ''
   };
 }
@@ -50,6 +51,7 @@ export function mapToDb(sub) {
     cost_price: parseFloat(sub.costPrice) || 0,
     sell_price: parseFloat(sub.sellPrice) || 0,
     payment_status: sub.paymentStatus || 'paid',
+    login_method: sub.loginMethod || 'password',
     notes: sub.notes || '',
     updated_at: new Date().toISOString()
   };

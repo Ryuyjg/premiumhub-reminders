@@ -9,19 +9,30 @@ import {
   AlertTriangle, 
   Package, 
   CheckCircle2, 
-  Check 
+  Check,
+  Save,
+  RotateCcw
 } from 'lucide-react';
 import { 
   buildWhatsAppMessage, 
   generateWhatsAppUrl, 
   cleanPhoneNumber, 
-  getPlatformInfo 
+  getPlatformInfo,
+  renderTemplate
 } from '../utils/helpers';
+import { TEMPLATE_VARIABLES, DEFAULT_TEMPLATES } from '../utils/constants';
 
-export default function WhatsAppModal({ subscription, settings, onClose, onShowToast }) {
+export default function WhatsAppModal({ 
+  subscription, 
+  settings, 
+  onClose, 
+  onShowToast,
+  onSaveTemplate 
+}) {
   const [templateType, setTemplateType] = useState('expiry_reminder');
   const [customMessage, setCustomMessage] = useState('');
   const [copied, setCopied] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
 
   useEffect(() => {
     if (subscription) {
@@ -259,25 +270,96 @@ export default function WhatsAppModal({ subscription, settings, onClose, onShowT
           <div style={{ marginBottom: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
               <label style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600 }}>
-                Message Preview (You can edit before opening):
+                Message Preview (You can edit or add brackets):
               </label>
-              <button
-                onClick={handleCopy}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: copied ? '#4ade80' : '#818cf8',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                {copied ? <Check size={14} /> : <Copy size={14} />}
-                <span>{copied ? 'Copied' : 'Copy Text'}</span>
-              </button>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const defaultMsg = buildWhatsAppMessage(templateType, subscription, settings);
+                    setCustomMessage(defaultMsg);
+                    onShowToast({ type: 'info', message: 'Reset to default template.' });
+                  }}
+                  title="Reset to default template"
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#64748b',
+                    fontSize: '0.72rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '3px'
+                  }}
+                >
+                  <RotateCcw size={12} />
+                  <span>Reset</span>
+                </button>
+
+                <button
+                  onClick={handleCopy}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: copied ? '#4ade80' : '#818cf8',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  {copied ? <Check size={14} /> : <Copy size={14} />}
+                  <span>{copied ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Bracket Tags Chips */}
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '5px',
+              marginBottom: '8px',
+              padding: '6px 8px',
+              background: 'rgba(0, 0, 0, 0.25)',
+              borderRadius: '8px',
+              border: '1px solid rgba(255, 255, 255, 0.04)'
+            }}>
+              <span style={{ fontSize: '0.68rem', color: '#64748b', alignSelf: 'center', marginRight: '4px' }}>
+                Insert:
+              </span>
+              {[
+                { tag: '{client_name}', label: 'Client' },
+                { tag: '{platform}', label: 'Platform' },
+                { tag: '{profile}', label: 'Profile' },
+                { tag: '{pin}', label: 'PIN' },
+                { tag: '{expiry_date}', label: 'Expiry' },
+                { tag: '{price}', label: 'Price' },
+                { tag: '{upi}', label: 'UPI' },
+                { tag: '{login_id}', label: 'ID/Phone' },
+                { tag: '{password}', label: 'Pass/OTP' }
+              ].map(item => (
+                <button
+                  key={item.tag}
+                  type="button"
+                  onClick={() => setCustomMessage(prev => prev + ' ' + item.tag)}
+                  title={`Insert ${item.tag}`}
+                  style={{
+                    background: 'rgba(99, 102, 241, 0.15)',
+                    border: '1px solid rgba(99, 102, 241, 0.3)',
+                    color: '#a5b4fc',
+                    borderRadius: '5px',
+                    padding: '2px 6px',
+                    fontSize: '0.7rem',
+                    fontFamily: 'var(--font-mono)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  +{item.tag}
+                </button>
+              ))}
             </div>
 
             <textarea
@@ -298,6 +380,61 @@ export default function WhatsAppModal({ subscription, settings, onClose, onShowT
                 fontFamily: 'inherit'
               }}
             />
+
+            {/* Template Save / Replace Bar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const rendered = renderTemplate(customMessage, subscription, settings);
+                  setCustomMessage(rendered);
+                  onShowToast({ type: 'success', message: 'Replaced all {brackets} with client data!' });
+                }}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  color: '#94a3b8',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  fontSize: '0.72rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                <Sparkles size={12} color="#34d399" />
+                <span>Fill Bracket Variables</span>
+              </button>
+
+              {onSaveTemplate && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSaveTemplate(templateType, customMessage);
+                    setIsSaved(true);
+                    onShowToast({ type: 'success', message: 'Saved as your permanent default template!' });
+                    setTimeout(() => setIsSaved(false), 2000);
+                  }}
+                  style={{
+                    background: isSaved ? 'rgba(34, 197, 94, 0.2)' : 'rgba(99, 102, 241, 0.15)',
+                    border: `1px solid ${isSaved ? '#4ade80' : 'rgba(99, 102, 241, 0.35)'}`,
+                    color: isSaved ? '#4ade80' : '#818cf8',
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    fontSize: '0.72rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  {isSaved ? <Check size={12} /> : <Save size={12} />}
+                  <span>{isSaved ? 'Saved as Default!' : 'Save as Default Template'}</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Notice for unsaved numbers */}
