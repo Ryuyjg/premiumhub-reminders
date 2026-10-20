@@ -31,7 +31,7 @@ export const DEFAULT_SETTINGS = {
   autoTelegramAlerts: false,
   masterPin: '8590',
   supabaseUrl: 'https://ioibfvtdacuakpckrllf.supabase.co',
-  supabaseAnonKey: ''
+  supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlvaWJmdnRkYWN1YWtwY2tybGxmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI1MTgxOTQsImV4cCI6MjEwODA5NDE5NH0.6Qxxhc-SzTD5GcCCsKYYrcpmXEmt8-11-66uI00DZDk'
 };
 
 // Realistic seed data representing real OTT reseller orders
