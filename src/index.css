@@ -1,0 +1,186 @@
+:root {
+  --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Color Palette */
+  --bg-dark: #070a12;
+  --bg-card: rgba(15, 23, 42, 0.75);
+  --bg-card-hover: rgba(23, 33, 60, 0.85);
+  --bg-surface: #0f172a;
+  --bg-surface-elevated: #1e293b;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --border-glow: rgba(99, 102, 241, 0.3);
+
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+
+  /* Accents */
+  --accent-primary: #6366f1;
+  --accent-primary-hover: #4f46e5;
+  --accent-glow: rgba(99, 102, 241, 0.25);
+  
+  --color-whatsapp: #25d366;
+  --color-whatsapp-hover: #20ba59;
+  --color-telegram: #229ed9;
+  --color-telegram-hover: #1b89be;
+
+  /* Status */
+  --status-urgent: #ef4444;
+  --status-urgent-bg: rgba(239, 68, 68, 0.15);
+  --status-warning: #f59e0b;
+  --status-warning-bg: rgba(245, 158, 11, 0.15);
+  --status-active: #10b981;
+  --status-active-bg: rgba(16, 185, 129, 0.15);
+  --status-expired: #dc2626;
+  --status-expired-bg: rgba(220, 38, 38, 0.2);
+
+  /* Shadows & Glow */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6);
+  --glow-urgent: 0 0 20px rgba(239, 68, 68, 0.4);
+  --glow-active: 0 0 15px rgba(16, 185, 129, 0.3);
+
+  /* Border radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-full: 9999px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
+  min-height: 100vh;
+  line-height: 1.5;
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 90% 10%, rgba(229, 9, 20, 0.06) 0%, transparent 40%),
+    radial-gradient(circle at 50% 80%, rgba(37, 211, 102, 0.05) 0%, transparent 50%);
+  background-attachment: fixed;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #090d16;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+}
+
+/* Glass panel */
+.glass-panel {
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+}
+
+/* Platform badge colors */
+.platform-netflix {
+  --platform-color: #e50914;
+  --platform-bg: rgba(229, 9, 20, 0.15);
+}
+.platform-prime {
+  --platform-color: #00a8e1;
+  --platform-bg: rgba(0, 168, 225, 0.15);
+}
+.platform-disney {
+  --platform-color: #38bdf8;
+  --platform-bg: rgba(56, 189, 248, 0.15);
+}
+.platform-spotify {
+  --platform-color: #1db954;
+  --platform-bg: rgba(29, 185, 84, 0.15);
+}
+.platform-youtube {
+  --platform-color: #ff0000;
+  --platform-bg: rgba(255, 0, 0, 0.15);
+}
+.platform-apple {
+  --platform-color: #e2e8f0;
+  --platform-bg: rgba(226, 232, 240, 0.15);
+}
+.platform-crunchyroll {
+  --platform-color: #f47521;
+  --platform-bg: rgba(244, 117, 33, 0.15);
+}
+.platform-zee5 {
+  --platform-color: #c084fc;
+  --platform-bg: rgba(192, 132, 252, 0.15);
+}
+.platform-sonyliv {
+  --platform-color: #60a5fa;
+  --platform-bg: rgba(96, 165, 250, 0.15);
+}
+.platform-jiocinema {
+  --platform-color: #f43f5e;
+  --platform-bg: rgba(244, 63, 94, 0.15);
+}
+.platform-other {
+  --platform-color: #a855f7;
+  --platform-bg: rgba(168, 85, 247, 0.15);
+}
+
+/* Animations */
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(239, 68, 68, 0.7);
+  }
+}
+
+.pulse-urgent {
+  animation: pulseGlow 2s infinite ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease-out forwards;
+}
+
+/* Utility tooltips / copy badges */
+.badge-code {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  padding: 2px 6px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
