@@ -1,33 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Lock, ShieldCheck, Sparkles, KeyRound, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Lock, AlertCircle } from 'lucide-react';
 
 export default function LockScreen({ masterPin = '8590', onUnlock }) {
   const [pin, setPin] = useState('');
   const [error, setError] = useState(false);
   const [remember, setRemember] = useState(true);
-  const inputRef = useRef(null);
 
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  const handleDigit = (digit) => {
-    if (pin.length < 4) {
-      const nextPin = pin + digit;
-      setPin(nextPin);
-      setError(false);
-      if (nextPin.length === 4) {
-        verifyPin(nextPin);
-      }
-    }
-  };
-
-  const handleBackspace = () => {
-    setPin(prev => prev.slice(0, -1));
-    setError(false);
-  };
-
-  const verifyPin = (candidatePin) => {
+  const verifyPin = useCallback((candidatePin) => {
     if (candidatePin === masterPin) {
       if (remember) {
         localStorage.setItem('premium_hub_unlocked_v1', 'true');
@@ -41,22 +20,55 @@ export default function LockScreen({ masterPin = '8590', onUnlock }) {
         setPin('');
       }, 500);
     }
-  };
+  }, [masterPin, remember, onUnlock]);
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Backspace') {
-      handleBackspace();
-    } else if (e.key === 'Enter') {
-      verifyPin(pin);
-    } else if (/^[0-9]$/.test(e.key)) {
-      handleDigit(e.key);
-    }
-  };
+  const handleDigit = useCallback((digit) => {
+    setPin(prev => {
+      if (prev.length < 4) {
+        const next = prev + digit;
+        setError(false);
+        if (next.length === 4) {
+          verifyPin(next);
+        }
+        return next;
+      }
+      return prev;
+    });
+  }, [verifyPin]);
+
+  const handleBackspace = useCallback(() => {
+    setPin(prev => prev.slice(0, -1));
+    setError(false);
+  }, []);
+
+  // Global Keyboard Listener: Works seamlessly with physical keyboard and numpad!
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      // Handle backspace
+      if (e.key === 'Backspace') {
+        e.preventDefault();
+        handleBackspace();
+      } 
+      // Handle numeric keys (0-9 from top row and numpad)
+      else if (/^[0-9]$/.test(e.key)) {
+        e.preventDefault();
+        handleDigit(e.key);
+      }
+      // Handle Enter
+      else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (pin.length === 4) {
+          verifyPin(pin);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [handleDigit, handleBackspace, verifyPin, pin]);
 
   return (
     <div
-      tabIndex={0}
-      onKeyDown={handleKeyDown}
       style={{
         position: 'fixed',
         inset: 0,
@@ -70,8 +82,7 @@ export default function LockScreen({ masterPin = '8590', onUnlock }) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '20px',
-        outline: 'none'
+        padding: '20px'
       }}
     >
       <div style={{
@@ -111,8 +122,8 @@ export default function LockScreen({ masterPin = '8590', onUnlock }) {
         }}>
           Premium Hub
         </h2>
-        <p style={{ fontSize: '0.82rem', color: '#94a3b8', marginBottom: '24px' }}>
-          Enter your 4-digit Master PIN to unlock
+        <p style={{ fontSize: '0.82rem', color: '#94a3b8', marginBottom: '20px' }}>
+          Type PIN on your keyboard or tap below
         </p>
 
         {/* PIN Dots Indicator */}
@@ -156,26 +167,6 @@ export default function LockScreen({ masterPin = '8590', onUnlock }) {
             <span>Incorrect PIN. Try again.</span>
           </div>
         )}
-
-        {/* Hidden Input for Mobile / Hardware Keyboard */}
-        <input
-          ref={inputRef}
-          type="password"
-          maxLength={4}
-          pattern="[0-9]*"
-          inputMode="numeric"
-          value={pin}
-          onChange={(e) => {
-            const val = e.target.value.replace(/\D/g, '').slice(0, 4);
-            setPin(val);
-            if (val.length === 4) verifyPin(val);
-          }}
-          style={{
-            position: 'absolute',
-            opacity: 0,
-            pointerEvents: 'none'
-          }}
-        />
 
         {/* On-screen Numeric Keypad */}
         <div style={{
